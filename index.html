@@ -1,0 +1,1596 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<meta name="theme-color" content="#84BD00">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Checklist SAKUMA">
+<link rel="manifest" href="manifest.json">
+<!-- Firebase SDK (Compat) — carrega apenas quando há internet; o app funciona offline mesmo sem elas -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="192x192" href="icone-192.png">
+<title>SAKUMA Agronegócios — Checklist de Manutenção de Máquinas e Implementos</title>
+<style>
+:root{
+  /* ===== Cores institucionais — Manual da Marca SAKUMA Agronegocios (2021) =====
+     VERDE-CLARO  Pantone 376 C  ·  R132 G189 B0    -> #84BD00
+     MARROM       Pantone 463 C  ·  R116 G79  B40   -> #744F28
+     CINZA-ESCURO Pantone 418 C  ·  R81  G83  B74   -> #51534A  (texto corrido)
+     Tons auxiliares sao apenas variacoes de luminosidade das cores acima,
+     usados em elementos de interface (botoes, bordas, fundos).            */
+  --verde:#84BD00; --verde2:#5C8200; --verde-fundo:#4A6A00; --verde-claro:#F1F7DF;
+  --marrom:#744F28; --marrom2:#8C6438;
+  --ardosia:#744F28; --nevoa:#F2F2EE; --tinta:#51534A; --sec:#7A7C71; --mudo:#9B9D94;
+  --linha:#D9DBD1; --papel:#FFFFFF; --fundo:#F6F7F3;
+  --amarelo:#B98900; --laranja:#B05B14; --vermelho:#A4342A; --azul:#2F6690;
+}
+*{box-sizing:border-box}
+html,body{margin:0;padding:0}
+body{font-family:Arial,Helvetica,sans-serif;background:var(--fundo);color:var(--tinta);font-size:14px}
+button{font-family:inherit;cursor:pointer}
+input,select,textarea{font-family:inherit;font-size:13px;color:var(--tinta)}
+
+/* ===== Cabeçalho do app ===== */
+.topo{background:#fff;border-bottom:3px solid var(--verde)}
+/* Faixa da marca: fundo neutro (branco), versao positiva policromatica.
+   O respiro em volta da marca respeita a distancia minima do manual (largura de "MA"). */
+.marca-faixa{max-width:1180px;margin:0 auto;padding:27px 28px;display:flex;align-items:center;gap:34px;flex-wrap:wrap}
+.marca-faixa img.marca{height:44px;width:auto;display:block}
+.marca-faixa .marca-txt{font-size:12.5px;color:var(--sec);letter-spacing:.6px;text-transform:uppercase;font-weight:700}
+.topo-faixa{background:var(--verde);color:#fff;padding:13px 20px 0}
+.topo-faixa .interno{max-width:1180px;margin:0 auto}
+.topo h1{margin:0;font-size:19px;font-weight:700;letter-spacing:.3px}
+.topo .sub{margin:3px 0 12px;font-size:12.5px;color:#F0F7DF}
+/* Abas estilo planilha */
+.abas{display:flex;gap:4px;overflow-x:auto;scrollbar-width:thin;max-width:1180px;margin:0 auto}
+.aba{border:0;background:var(--verde-fundo);color:#EAF3D3;padding:9px 16px;border-radius:8px 8px 0 0;font-size:13px;font-weight:600;white-space:nowrap;transition:background .15s}
+.aba:hover{background:#6E9E00}
+.aba.ativa{background:var(--fundo);color:var(--marrom)}
+.aba:focus-visible,button:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--verde2);outline-offset:1px}
+
+/* ===== Área de conteúdo ===== */
+.conteudo{max-width:1180px;margin:0 auto;padding:18px 16px 60px}
+.painel{display:none}
+.painel.ativa{display:block}
+.cartao{background:var(--papel);border:1px solid var(--linha);border-radius:10px;padding:16px 18px;margin-bottom:16px}
+.faixa-titulo{background:var(--verde);color:#fff;font-weight:700;font-size:15px;padding:10px 14px;border-radius:8px 8px 0 0;letter-spacing:.4px}
+.faixa-sub{color:var(--sec);font-size:12.5px;padding:8px 14px;border:1px solid var(--linha);border-top:0;border-radius:0 0 8px 8px;background:#fff;margin-bottom:14px;text-align:justify}
+.barra{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin:0 0 12px}
+.barra .direita{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.btn{border:1px solid var(--verde2);background:var(--verde2);color:#fff;border-radius:7px;padding:8px 14px;font-size:13px;font-weight:600}
+.btn:hover{background:var(--verde-fundo);border-color:var(--verde-fundo)}
+.btn.claro{background:#fff;color:var(--verde2)}
+.btn.claro:hover{background:var(--verde-claro)}
+.btn.cinza{background:#fff;color:var(--ardosia);border-color:var(--linha)}
+.btn.cinza:hover{background:var(--nevoa)}
+.btn.perigo{background:#fff;color:var(--vermelho);border-color:#DDBDB9}
+.btn.perigo:hover{background:#F7EAE8}
+.btn.mini{padding:4px 9px;font-size:12px;font-weight:600}
+label.rotulo{font-size:11.5px;font-weight:700;color:var(--ardosia);display:block;margin-bottom:3px;text-transform:uppercase;letter-spacing:.4px}
+input[type=text],input[type=date],input[type=number],select,textarea{border:1px solid var(--linha);border-radius:6px;padding:7px 9px;background:#fff;width:100%}
+textarea{resize:vertical;min-height:64px}
+
+/* ===== Tabelas de dados ===== */
+.rolagem{overflow-x:auto;border:1px solid var(--linha);border-radius:8px;background:#fff}
+table.dados{border-collapse:collapse;width:100%;min-width:760px;font-size:13px}
+table.dados th{background:var(--ardosia);color:#fff;font-weight:700;text-align:left;padding:9px 10px;font-size:12px;letter-spacing:.3px;white-space:nowrap}
+table.dados td{padding:8px 10px;border-top:1px solid #E6E8E0;vertical-align:top}
+table.dados tbody tr:nth-child(odd) td{background:var(--nevoa)}
+table.dados tbody tr:hover td{background:var(--verde-claro)}
+.acoes{white-space:nowrap;text-align:right}
+.vazio{color:var(--mudo);font-style:italic;padding:18px;text-align:center}
+.selo{display:inline-block;padding:2px 9px;border-radius:20px;font-size:11.5px;font-weight:700}
+.selo.ativo{background:var(--verde-claro);color:var(--verde2)}
+.selo.maquina{background:#EFE6DC;color:var(--marrom)}
+.selo.implemento{background:var(--verde-claro);color:var(--verde2)}
+.selo.inativo{background:var(--nevoa);color:var(--mudo)}
+.selo.aprovado{background:var(--verde-claro);color:var(--verde2)}
+.selo.reprovado{background:#F7EAE8;color:var(--vermelho)}
+.selo.p-baixa{background:var(--nevoa);color:var(--sec)}
+.selo.p-media{background:#FBF3DC;color:var(--amarelo)}
+.selo.p-alta{background:#F8E9DC;color:var(--laranja)}
+.selo.p-critica{background:#F7EAE8;color:var(--vermelho)}
+.selo.s-aberta{background:#F7EAE8;color:var(--vermelho)}
+.selo.s-andamento{background:#FBF3DC;color:var(--amarelo)}
+.selo.s-concluida{background:var(--verde-claro);color:var(--verde2)}
+.legenda{background:#FBFCF7;border:1px dashed var(--linha);border-radius:8px;padding:10px 14px;margin-top:14px;font-size:12.5px;color:var(--sec);text-align:justify}
+.legenda b{color:var(--ardosia)}
+
+/* ===== Dashboard ===== */
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px;margin-bottom:18px}
+.kpi{background:#fff;border:1px solid var(--linha);border-radius:10px;overflow:hidden}
+.kpi .k-tit{background:var(--verde2);color:#fff;font-size:11px;font-weight:700;letter-spacing:.5px;padding:7px 10px;text-transform:uppercase}
+.kpi .k-val{font-size:30px;font-weight:800;color:var(--marrom);padding:12px 10px;background:var(--nevoa);text-align:center}
+.duascol{display:grid;grid-template-columns:1.4fr 1fr;gap:16px}
+@media(max-width:860px){.duascol{grid-template-columns:1fr}}
+.mini-barra{background:var(--nevoa);border-radius:4px;height:9px;overflow:hidden}
+.mini-barra i{display:block;height:100%;background:var(--verde2)}
+
+/* ===== Painel do checklist ===== */
+.chk-controles{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin-bottom:12px}
+.chip-situacao{font-size:12.5px;font-weight:700;padding:6px 12px;border-radius:20px}
+.chip-situacao.ok{background:var(--verde-claro);color:var(--verde2)}
+.chip-situacao.rep{background:#F7EAE8;color:var(--vermelho)}
+.chip-situacao.neutro{background:var(--nevoa);color:var(--mudo)}
+
+/* ===== Folha A4 (visualização em tela e impressão) ===== */
+.paginador{overflow-x:auto;padding:6px 2px 14px}
+.folha{width:210mm;min-height:297mm;background:#fff;margin:0 auto;box-shadow:0 2px 14px rgba(0,0,0,.18);padding:10mm;color:#000}
+.folha,.folha *{font-family:Arial,Helvetica,sans-serif}
+/* Cabecalho impresso: marca a esquerda, respeitando a distancia minima do manual
+   (largura de "MA" = 0,573 x altura da marca ~= 7 mm para a marca em 12 mm). */
+.f-cab{display:flex;align-items:flex-start;gap:8mm;margin-bottom:6.5mm}
+.f-cab img.marca{height:12mm;width:auto;display:block;flex:0 0 auto}
+.f-cab .f-cab-txt{flex:1 1 auto;text-align:right;padding-top:1.5mm}
+.f-titulo{color:var(--verde2);font-weight:700;font-size:13.5pt;letter-spacing:.2px;line-height:1.15}
+.f-sub{color:var(--sec);font-size:9pt;padding-top:1.2mm}
+.f-regua{height:1.2mm;background:var(--verde);margin-bottom:4.5mm}
+.f-info{width:100%;border-collapse:collapse;margin-bottom:3.5mm;font-size:9.5pt}
+.f-info td{border:1px solid #B3B5AA;padding:1.6mm 2mm;height:7mm}
+.f-info td.rot{background:var(--verde-claro);color:var(--marrom);font-weight:700;width:12%;white-space:nowrap}
+.f-info td.val{width:21.3%}
+.f-tab{width:100%;border-collapse:collapse;font-size:9pt;table-layout:fixed}
+.f-tab th{background:var(--ardosia);color:#fff;font-weight:700;border:1px solid var(--ardosia);padding:1.5mm 1mm;font-size:8.5pt;line-height:1.15}
+.f-tab td{border:1px solid #B3B5AA;padding:1mm 1.5mm;height:6.5mm;overflow:hidden;font-size:8.5pt}
+.f-tab tr:nth-child(even) td{background:#F7F9F0}
+.c-grupo{width:10.5%}.c-item{width:29%}.c-tipo{width:9.5%}.c-per{width:8%}.c-obr{width:5.5%;text-align:center}
+.c-marca{width:6.4%;text-align:center}.c-obs{width:18.3%}
+.caixa{display:flex;align-items:center;justify-content:center;width:5.2mm;height:5.2mm;border:1.4px solid var(--marrom);margin:0 auto;font-weight:800;font-size:10.5pt;color:var(--verde);line-height:1;background:#fff}
+.folha .caixa[data-clicavel]{cursor:pointer}
+.folha .caixa[data-clicavel]:hover{background:var(--verde-claro)}
+.obs-in{border:0;border-bottom:1px dotted #C3C5B9;width:100%;font-size:8.5pt;padding:0 1px;background:transparent}
+.obs-in:focus{outline:0;border-bottom:1px solid var(--verde2)}
+.cel-obs{display:flex;flex-direction:column;gap:3px}
+.btn-foto{display:inline-flex;align-items:center;gap:4px;border:1px dashed var(--linha);background:var(--nevoa);color:var(--sec);border-radius:5px;padding:2px 6px;font-size:7.5pt;cursor:pointer;margin-top:2px;white-space:nowrap}
+.btn-foto:hover{border-color:var(--verde2);color:var(--verde2);background:var(--verde-claro)}
+.foto-mini-lista{display:flex;flex-wrap:wrap;gap:3px;margin-top:2px}
+.foto-mini{width:18mm;height:14mm;object-fit:cover;border-radius:3px;border:1px solid var(--linha);cursor:pointer}
+.foto-mini:hover{opacity:.8}
+#foto-modal{position:fixed;inset:0;background:rgba(0,0,0,.82);display:none;align-items:center;justify-content:center;z-index:200;flex-direction:column;gap:10px}
+#foto-modal.aberto{display:flex}
+#foto-modal img{max-width:92vw;max-height:78vh;border-radius:8px;box-shadow:0 4px 32px #000}
+#foto-modal .fm-barra{display:flex;gap:10px;align-items:center;flex-wrap:wrap;justify-content:center}
+#foto-modal .fm-btn{background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.35);color:#fff;border-radius:6px;padding:7px 16px;font-size:13px;cursor:pointer}
+#foto-modal .fm-btn:hover{background:rgba(255,255,255,.3)}
+#foto-modal .fm-btn.del{background:rgba(180,40,40,.7);border-color:rgba(180,40,40,.9)}
+.f-fotos{margin-top:4mm;page-break-inside:avoid}
+.f-fotos-titulo{font-weight:700;color:var(--marrom);border-bottom:1px solid var(--verde);padding-bottom:1mm;margin-bottom:3mm;font-size:9.5pt}
+.f-fotos-grid{display:flex;flex-wrap:wrap;gap:3mm}
+.f-fotos-grid figure{margin:0;text-align:center;break-inside:avoid}
+.f-fotos-grid figure img{width:55mm;height:42mm;object-fit:cover;border:1px solid #B3B5AA;border-radius:2px;display:block}
+.f-fotos-grid figure figcaption{font-size:7.5pt;color:var(--sec);margin-top:1mm;max-width:55mm;word-break:break-word}
+.f-assin{width:100%;border-collapse:collapse;margin-top:8mm;font-size:8.5pt;color:var(--sec)}
+.f-assin td{width:44%;text-align:center;padding-top:2mm;border-top:1px solid var(--sec)}
+.f-assin td.espaco{width:12%;border:0}
+.f-rodape{margin-top:5mm;font-size:7.5pt;color:var(--mudo);text-align:right;border-top:.4mm solid var(--verde);padding-top:1.5mm}
+
+/* ===== Modal ===== */
+.veu{position:fixed;inset:0;background:rgba(81,83,74,.55);display:none;align-items:flex-start;justify-content:center;padding:5vh 14px;z-index:50;overflow-y:auto}
+.veu.aberto{display:flex}
+.modal{background:#fff;border-radius:12px;max-width:640px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.3)}
+.modal .m-tit{background:var(--verde);color:#fff;font-weight:700;padding:12px 18px;border-radius:12px 12px 0 0;font-size:15px}
+.modal .m-corpo{padding:16px 18px;display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.modal .m-corpo .campo.largo{grid-column:1/-1}
+.modal .m-pe{display:flex;justify-content:flex-end;gap:8px;padding:0 18px 16px}
+@media(max-width:560px){.modal .m-corpo{grid-template-columns:1fr}}
+
+/* ===== Portao de acesso (senha) ===== */
+#portao{position:fixed;inset:0;background:var(--fundo);display:flex;align-items:center;justify-content:center;padding:24px;z-index:100;flex-direction:column;justify-content:flex-start;padding-top:48px}
+#portao .caixa-login{background:#fff;border:1px solid var(--linha);border-top:5px solid var(--verde);border-radius:12px;max-width:420px;width:100%;padding:30px 30px 26px;box-shadow:0 8px 30px rgba(81,83,74,.14);text-align:center;margin-top:38px}
+#portao img.marca{height:52px;width:auto;display:block;margin:0 auto 30px}
+#portao h2{margin:0 0 4px;font-size:16px;color:var(--marrom);letter-spacing:.3px}
+#portao p.ajuda{margin:0 0 20px;font-size:12.5px;color:var(--sec)}
+#portao .campo-senha{text-align:left;margin-bottom:12px}
+#portao select,#portao input[type=password]{padding:11px 10px;font-size:14px;border-radius:8px}
+#portao select{background:#fff;cursor:pointer}
+.usuario-chip{display:inline-flex;align-items:center;gap:7px;background:rgba(255,255,255,.2);color:#fff;border-radius:20px;padding:5px 13px;font-size:12.5px;font-weight:700}
+.usuario-chip .ini{background:#fff;color:var(--verde2);width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:11px}
+#portao .erro{color:var(--vermelho);font-size:12.5px;min-height:17px;margin-bottom:10px;font-weight:700}
+#portao .btn{width:100%;padding:11px}
+#portao .rodape-login{margin-top:18px;font-size:11px;color:var(--mudo);line-height:1.5}
+/* --- sync status bar --- */
+#sync-bar{display:flex;align-items:center;gap:8px;padding:5px 20px;font-size:11.5px;color:#fff;background:var(--verde-fundo);border-bottom:1px solid rgba(0,0,0,.12);min-height:28px;flex-wrap:wrap;position:fixed;top:0;left:0;right:0;z-index:110}
+#sync-bar.erro{background:var(--vermelho)}
+#sync-bar.pendente{background:var(--marrom)}
+.sync-dot{width:8px;height:8px;border-radius:50%;background:#A8E06F;flex:0 0 auto}
+#sync-bar.erro .sync-dot{background:#FFAAAA}
+#sync-bar.pendente .sync-dot{background:#FFE08A;animation:pisca .8s infinite}
+@keyframes pisca{0%,100%{opacity:1}50%{opacity:.2}}
+.sync-cfg{margin-left:auto;background:transparent;border:1px solid rgba(255,255,255,.4);color:#fff;border-radius:5px;padding:2px 10px;font-size:11px;cursor:pointer}
+.sync-cfg:hover{background:rgba(255,255,255,.18)}
+#app{display:none}
+body.liberado #portao{display:none}
+body.liberado #app{display:block}
+.sair{background:transparent;border:1px solid rgba(255,255,255,.65);color:#fff;border-radius:6px;padding:6px 12px;font-size:12px;font-weight:700}
+.sair:hover{background:rgba(255,255,255,.18)}
+
+/* ===== Toast ===== */
+#toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%) translateY(10px);background:var(--ardosia);color:#fff;padding:10px 18px;border-radius:8px;font-size:13.5px;opacity:0;pointer-events:none;transition:opacity .25s,transform .25s;z-index:60;max-width:90vw;text-align:center}
+#toast.mostra{opacity:1;transform:translateX(-50%) translateY(0)}
+@media(prefers-reduced-motion:reduce){#toast,.aba{transition:none}}
+
+/* ===== Impressão A4 ===== */
+#raiz-impressao{display:none}
+@page{size:A4 portrait;margin:10mm}
+/* ===== RESPONSIVO MOBILE (≤ 640px) ===== */
+@media(max-width:640px){
+  .sair-label{display:none}
+  .sair-icon{display:inline}
+  .topo-sub-desktop{display:none}
+  .abas{scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;padding-bottom:2px}
+  .aba{scroll-snap-align:start;flex:0 0 auto}
+  /* Cabeçalho compacto */
+  .marca-faixa{padding:10px 14px;gap:12px}
+  .marca-faixa img.marca{height:32px}
+  .marca-faixa .marca-txt{font-size:11px;letter-spacing:.2px}
+  .topo-faixa{padding:8px 14px 0}
+  .topo h1{font-size:14px;letter-spacing:0}
+  .topo .sub{font-size:11px;margin-bottom:8px}
+  /* Chip do usuário e botões de ação */
+  .usuario-chip{font-size:11px;padding:4px 8px}
+  .usuario-chip .ini{width:18px;height:18px;font-size:10px}
+  .sair{font-size:11px;padding:5px 8px}
+  /* Abas: fonte menor, scroll horizontal visível */
+  .aba{font-size:11px;padding:7px 10px}
+  /* Cartão e paineis */
+  .cartao{padding:12px}
+  .barra{flex-wrap:wrap;gap:6px}
+  .barra .direita{width:100%;display:flex;flex-wrap:wrap;gap:6px}
+  .barra .direita .btn{flex:1 1 auto;min-width:120px;font-size:12px;padding:8px 6px;text-align:center}
+  /* Controles do checklist em coluna */
+  .chk-controles{grid-template-columns:1fr 1fr;gap:8px}
+  /* Tabelas: scroll horizontal */
+  .rolagem{overflow-x:auto;-webkit-overflow-scrolling:touch}
+  table.dados{min-width:600px}
+  /* KPIs em 2 colunas */
+  .kpis{grid-template-columns:1fr 1fr}
+  /* Faixa título e sub */
+  .faixa-titulo{font-size:13px;padding:8px 12px}
+  .faixa-sub{font-size:12px;padding:6px 12px}
+  /* Legenda */
+  .legenda{font-size:12px}
+  /* Chip situação */
+  .chip-situacao{font-size:12px}
+  /* Toast maior para toque */
+  #toast{font-size:13px;padding:12px 18px;bottom:70px}
+  /* Sync bar */
+  #sync-bar{font-size:11px;padding:4px 12px}
+  .sync-cfg{font-size:10px;padding:2px 7px}
+  /* Botão foto */
+  .btn-foto{font-size:8pt;padding:3px 7px}
+  /* Foto mini maior no celular */
+  .foto-mini{width:22mm;height:17mm}
+}
+
+/* ===== RESPONSIVO TABLET (641–1024px) ===== */
+@media(min-width:641px){
+  .sair-label{display:inline}
+  .sair-icon{display:none}
+  .topo-sub-desktop{display:block}
+}
+@media(min-width:641px) and (max-width:1024px){
+  .marca-faixa{padding:16px 20px}
+  .marca-faixa img.marca{height:38px}
+  .topo h1{font-size:16px}
+  .aba{font-size:12px;padding:8px 12px}
+  .chk-controles{grid-template-columns:1fr 1fr 1fr}
+  .kpis{grid-template-columns:repeat(3,1fr)}
+}
+
+/* ===== TV / TELA GRANDE (≥ 1600px) ===== */
+@media(min-width:1600px){
+  body{font-size:16px}
+  .marca-faixa img.marca{height:54px}
+  .topo h1{font-size:22px}
+  .topo .sub{font-size:14px}
+  .aba{font-size:15px;padding:11px 22px}
+  .cartao{padding:24px}
+  table.dados th,table.dados td{padding:12px 14px;font-size:15px}
+  .kpi .k-val{font-size:36px}
+  .kpi .k-tit{font-size:13px}
+  .btn{font-size:14px;padding:10px 22px}
+  input,select,textarea{font-size:15px}
+  .rotulo{font-size:13px}
+  #sync-bar{font-size:13px;padding:7px 28px}
+}
+
+@media print{
+  body{background:#fff}
+  #portao{display:none!important}
+  #app{display:none!important}
+  #toast{display:none!important}
+  #raiz-impressao{display:block}
+  #raiz-impressao .folha{width:auto;min-height:0;margin:0;box-shadow:none;padding:0;break-after:page}
+  #raiz-impressao .folha:last-child{break-after:auto}
+  .f-regua,.f-info td.rot,.f-tab th,.f-tab tr:nth-child(even) td,.caixa,.f-titulo,.f-rodape{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+  .f-cab img.marca{height:12mm!important}
+  .obs-in{border-bottom:1px dotted #B0BEC5}
+}
+</style>
+</head>
+<body>
+
+<!-- ============ PORTÃO DE ACESSO ============ -->
+<!-- barra de status do banco — visível sempre, mesmo antes do login -->
+<div id="sync-bar" style="display:none">
+  <span class="sync-dot"></span>
+  <span id="sync-txt"></span>
+  <button class="sync-cfg" onclick="abrirConfigFirebase()">&#9881; Banco</button>
+</div>
+
+<div id="portao">
+  <div class="caixa-login">
+    <img class="marca" id="marca-login" alt="SAKUMA Agronegócios">
+    <h2>ACESSO RESTRITO</h2>
+    <p class="ajuda">Manutenção de Máquinas e Implementos</p>
+    <div class="campo-senha">
+      <label class="rotulo" for="usuario">Usuário</label>
+      <select id="usuario"></select>
+    </div>
+    <div class="campo-senha">
+      <label class="rotulo" for="senha">Senha</label>
+      <input type="password" id="senha" autocomplete="current-password" placeholder="Digite sua senha">
+    </div>
+    <div class="erro" id="erro-senha"></div>
+    <button class="btn" onclick="entrar()">Entrar</button>
+    <div class="rodape-login">SAKUMA Agronegócios<br>Uso interno — não compartilhe este arquivo.</div>
+  </div>
+</div>
+
+<div id="app">
+<header class="topo">
+  <div class="marca-faixa">
+    <img class="marca" id="marca-topo" alt="SAKUMA Agronegócios">
+    <div class="marca-txt">Controle de Manutenção Preventiva</div>
+  </div>
+  <div class="topo-faixa">
+   <div class="interno">
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+      <div style="flex:1 1 auto;min-width:180px">
+        <h1>CHECKLIST DE MANUTENÇÃO DE MÁQUINAS E IMPLEMENTOS</h1>
+        <div class="sub topo-sub-desktop">Cadastro · Checklist · Inspeções · Anomalias · Indicadores</div>
+      </div>
+      <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">
+        <span class="usuario-chip" id="chip-usuario"></span>
+        <button class="sair" onclick="trocarSenha()" title="Trocar senha"><span class="sair-label">Trocar senha</span><span class="sair-icon">🔑</span></button>
+        <button class="sair" onclick="sair()">Sair</button>
+      </div>
+    </div>
+   </div>
+  </div>
+  <nav class="abas" role="tablist">
+    <button class="aba ativa" data-aba="cadastro" role="tab">1 · Máquinas e Implementos</button>
+    <button class="aba" data-aba="itens" role="tab">2 · Itens de Manutenção</button>
+    <button class="aba" data-aba="checklist" role="tab">3 · Checklist (Impressão)</button>
+    <button class="aba" data-aba="inspecoes" role="tab">4 · Registro de Inspeções</button>
+    <button class="aba" data-aba="anomalias" role="tab">5 · Registro de Anomalias</button>
+    <button class="aba" data-aba="dashboard" role="tab">6 · Dashboard</button>
+  </nav>
+</header>
+
+<main class="conteudo">
+
+<!-- ============ ABA 1: CADASTRO ============ -->
+<section class="painel ativa" id="painel-cadastro">
+  <div class="faixa-titulo">CADASTRO DE MÁQUINAS E IMPLEMENTOS</div>
+  <div class="faixa-sub">Uma máquina ou implemento por linha. O código é gerado automaticamente (MAQ para máquinas, IMP para implementos) e deve ser único.</div>
+  <div class="barra">
+    <button class="btn" onclick="novoImplemento()">+ Novo equipamento</button>
+    <div style="min-width:200px"><select id="filtro-tipo-eq" onchange="renderImplementos()">
+      <option value="">Tipo: todos</option><option>Máquina</option><option>Implemento</option>
+    </select></div>
+    <div class="direita">
+      <button class="btn cinza" onclick="exportarJSON()">Exportar dados</button>
+      <button class="btn cinza" onclick="document.getElementById('arq-importar').click()">Importar dados</button>
+      <input type="file" id="arq-importar" accept=".json,application/json" style="display:none" onchange="importarJSON(this)">
+      <button class="btn perigo" onclick="restaurarExemplo()">Restaurar dados originais</button>
+    </div>
+  </div>
+  <div class="rolagem"><table class="dados" id="tab-implementos">
+    <thead><tr><th>Código</th><th>Tipo</th><th>Nome do Equipamento</th><th>Categoria</th><th>Marca</th><th>Modelo</th><th>Patrimônio</th><th>Ano</th><th>Status</th><th class="acoes">Ações</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+  <div class="legenda"><b>LEGENDA</b><br>
+    <b>Tipo</b> separa máquinas (trator, colhedora, pulverizador autopropelido) de implementos (plantadeira, grade, carreta). O <b>nome do equipamento</b> vincula os itens de manutenção (Aba 2) e os registros das Abas 3 a 5 — ao renomear, todos os vínculos são atualizados automaticamente.<br>
+    Os dados ficam salvos neste navegador. Use <b>Exportar dados</b> para gerar um arquivo de backup (.json).
+  </div>
+</section>
+
+<!-- ============ ABA 2: ITENS DE MANUTENÇÃO ============ -->
+<section class="painel" id="painel-itens">
+  <div class="faixa-titulo">CADASTRO DE ITENS DE MANUTENÇÃO (CHECKLIST MESTRE)</div>
+  <div class="faixa-sub">Cada linha é um item de verificação vinculado a uma máquina ou implemento. A coluna Ordem define a sequência de impressão.</div>
+  <div class="barra">
+    <button class="btn" onclick="novoItem()">+ Novo item</button>
+    <div style="min-width:230px">
+      <select id="filtro-itens" onchange="renderItens()"></select>
+    </div>
+  </div>
+  <div class="rolagem"><table class="dados" id="tab-itens">
+    <thead><tr><th>Equipamento</th><th>Grupo da Inspeção</th><th>Item a Verificar</th><th>Tipo de Verificação</th><th>Periodicidade</th><th>Obrigatório</th><th>Ordem</th><th class="acoes">Ações</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+  <div class="legenda"><b>LEGENDA</b><br>
+    A coluna <b>Equipamento</b> usa a lista vinda da Aba 1.<br>
+    A <b>Ordem de Impressão</b> monta o checklist da Aba 3 automaticamente — use as setas ▲▼ para reordenar.
+  </div>
+</section>
+
+<!-- ============ ABA 3: CHECKLIST DE IMPRESSÃO ============ -->
+<section class="painel" id="painel-checklist">
+  <div class="cartao">
+    <div class="chk-controles">
+      <div><label class="rotulo" for="chk-imp">Equipamento</label>
+        <select id="chk-imp" onchange="mudarImplementoChecklist()"></select></div>
+      <div><label class="rotulo" for="chk-data">Data</label>
+        <input type="date" id="chk-data" onchange="salvarRascunho()"></div>
+      <div><label class="rotulo" for="chk-hor">Horímetro</label>
+        <input type="number" step="0.1" min="0" id="chk-hor" placeholder="ex.: 1450,5" oninput="salvarRascunho()"></div>
+      <div><label class="rotulo" for="chk-resp">Responsável</label>
+        <input type="text" id="chk-resp" oninput="salvarRascunho()"></div>
+      <div><label class="rotulo" for="chk-mec">Mecânico</label>
+        <input type="text" id="chk-mec" oninput="salvarRascunho()"></div>
+    </div>
+    <div class="barra">
+      <span id="chip-situacao" class="chip-situacao neutro">Situação prevista: —</span>
+      <div class="direita">
+        <button class="btn claro" onclick="limparMarcacoes()">Limpar marcações</button>
+        <input type="file" id="inp-foto-geral" accept="image/*" multiple capture="environment" style="display:none" onchange="adicionarFotosGerais(this)">
+        <button class="btn cinza" onclick="document.getElementById('inp-foto-geral').click()">&#128247; Fotos gerais</button>
+        <button class="btn cinza" onclick="imprimirChecklist(true)">Imprimir em branco</button>
+        <button class="btn cinza" onclick="imprimirLote()">Imprimir lote (ativos)</button>
+        <button class="btn claro" onclick="imprimirChecklist(false)">Imprimir / Salvar PDF</button>
+        <button class="btn" onclick="salvarInspecao()">✓ Salvar inspeção</button>
+      </div>
+    </div>
+    <div class="legenda">Marque <b>uma opção por item</b>. Clique em <b>&#128247; foto</b> em qualquer linha para fotografar ou escolher imagem — as miniaturas ficam na linha e saem na impressão. Use <b>Fotos gerais</b> para fotos da inspeção como um todo. Ao <b>salvar a inspeção</b>, o registro vai para a Aba 4 e “Necessita Reparo” gera anomalia na Aba 5.</div>
+  </div>
+  <div class="paginador"><div class="folha" id="folha-checklist"></div></div>
+</section>
+
+<!-- ============ ABA 4: REGISTRO DE INSPEÇÕES ============ -->
+<section class="painel" id="painel-inspecoes">
+  <div class="faixa-titulo">REGISTRO DE INSPEÇÕES REALIZADAS</div>
+  <div class="faixa-sub">Registre aqui cada checklist executado na Aba 3. O nº da inspeção é gerado automaticamente.</div>
+  <div class="barra"><button class="btn" onclick="novaInspecao()">+ Nova inspeção manual</button></div>
+  <div class="rolagem"><table class="dados" id="tab-inspecoes">
+    <thead><tr><th>Nº Inspeção</th><th>Data</th><th>Equipamento</th><th>Horímetro</th><th>Mecânico</th><th>Responsável</th><th>Registrado por</th><th>Situação</th><th>Observações Gerais</th><th class="acoes">Ações</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+</section>
+
+<!-- ============ ABA 5: REGISTRO DE ANOMALIAS ============ -->
+<section class="painel" id="painel-anomalias">
+  <div class="faixa-titulo">REGISTRO DE ANOMALIAS E OCORRÊNCIAS</div>
+  <div class="faixa-sub">Registre aqui os itens marcados como 'Necessita Reparo' durante os checklists.</div>
+  <div class="barra">
+    <button class="btn" onclick="novaAnomalia()">+ Nova anomalia</button>
+    <div style="min-width:200px"><select id="filtro-anom-imp" onchange="renderAnomalias()"></select></div>
+    <div style="min-width:170px"><select id="filtro-anom-status" onchange="renderAnomalias()">
+      <option value="">Status: todos</option><option>Aberta</option><option>Em andamento</option><option>Concluída</option>
+    </select></div>
+  </div>
+  <div class="rolagem"><table class="dados" id="tab-anomalias">
+    <thead><tr><th>Data</th><th>Equipamento</th><th>Item com Defeito</th><th>Descrição da Anomalia</th><th>Prioridade</th><th>Serviço Necessário</th><th>Peças Necessárias</th><th>Responsável</th><th>Status</th><th>Data Conclusão</th><th class="acoes">Ações</th></tr></thead>
+    <tbody></tbody>
+  </table></div>
+  <div class="legenda">O botão <b>Avançar ➜</b> muda o status (Aberta → Em andamento → Concluída) e, ao concluir, preenche a <b>Data Conclusão</b> automaticamente.</div>
+</section>
+
+<!-- ============ ABA 6: DASHBOARD ============ -->
+<section class="painel" id="painel-dashboard">
+  <div class="faixa-titulo">DASHBOARD DE MANUTENÇÃO</div>
+  <div class="faixa-sub">Indicadores atualizados automaticamente a partir das Abas 4 e 5.</div>
+  <div class="kpis">
+    <div class="kpi"><div class="k-tit">Checklists Realizados</div><div class="k-val" id="kpi-checklists">0</div></div>
+    <div class="kpi"><div class="k-tit">Anomalias Abertas</div><div class="k-val" id="kpi-abertas">0</div></div>
+    <div class="kpi"><div class="k-tit">Anomalias Críticas</div><div class="k-val" id="kpi-criticas">0</div></div>
+    <div class="kpi"><div class="k-tit">% Aprovação</div><div class="k-val" id="kpi-aprovacao">0%</div></div>
+    <div class="kpi"><div class="k-tit">Equipamentos Ativos</div><div class="k-val" id="kpi-ativos">0</div></div>
+  </div>
+  <div class="duascol">
+    <div class="cartao" style="margin:0">
+      <h3 style="margin:2px 0 10px;color:var(--ardosia);font-size:14px">ANOMALIAS POR IMPLEMENTO</h3>
+      <div class="rolagem"><table class="dados" id="tab-dash-anom" style="min-width:520px">
+        <thead><tr><th>Equipamento</th><th>Total Anomalias</th><th>Abertas/Andamento</th><th>Concluídas</th></tr></thead>
+        <tbody></tbody>
+      </table></div>
+    </div>
+    <div>
+      <div class="cartao">
+        <h3 style="margin:2px 0 10px;color:var(--ardosia);font-size:14px">TOP 5 — EQUIPAMENTOS COM MAIS PROBLEMAS</h3>
+        <div id="dash-top5"></div>
+      </div>
+      <div class="cartao" style="margin-bottom:0">
+        <h3 style="margin:2px 0 10px;color:var(--ardosia);font-size:14px">SITUAÇÃO DAS INSPEÇÕES</h3>
+        <div id="dash-situacao"></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<!-- Modal genérico -->
+<div class="veu" id="veu" onclick="if(event.target===this)fecharModal()">
+  <div class="modal" role="dialog" aria-modal="true">
+    <div class="m-tit" id="m-tit"></div>
+    <div class="m-corpo" id="m-corpo"></div>
+    <div class="m-pe">
+      <button class="btn cinza" onclick="fecharModal()">Cancelar</button>
+      <button class="btn" id="m-salvar">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast" role="status"></div>
+<div id="raiz-impressao"></div>
+
+<!-- modal de foto ampliada -->
+<div id="foto-modal" role="dialog" aria-modal="true" onclick="fecharFotoModal(event)">
+  <img id="foto-modal-img" src="" alt="Foto ampliada">
+  <div class="fm-barra">
+    <button class="fm-btn" onclick="navFoto(-1)">&#8592; Anterior</button>
+    <button class="fm-btn" onclick="navFoto(1)">Próxima &#8594;</button>
+    <a id="foto-modal-dl" class="fm-btn" download="foto.jpg">&#8659; Baixar</a>
+    <button class="fm-btn del" onclick="excluirFotoAtual()">Excluir</button>
+    <button class="fm-btn" onclick="document.getElementById('foto-modal').classList.remove('aberto')">Fechar ✕</button>
+  </div>
+  <div id="foto-modal-leg" style="color:#ddd;font-size:12px;text-align:center;max-width:80vw"></div>
+</div>
+<script>
+/* =====================================================================
+   MARCA SAKUMA AGRONEGÓCIOS — versão horizontal, policromática positiva
+   Vetor extraído do arquivo oficial SAKUMA-AGRONEGOCIOS-LOGO_POLICROMIA_RGB
+   e remontado na proporção horizontal do manual (símbolo à esquerda,
+   nome à direita). Cores originais: #84BD00 (Pantone 376 C) e
+   #744F28 (Pantone 463 C). Não altere este conteúdo.
+   ===================================================================== */
+const MARCA_HORIZONTAL = "data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA5MzUuNTMgMzgxLjc1IiByb2xlPSJpbWciIGFyaWEtbGFiZWw9IlNBS1VNQSBBZ3JvbmVnw7NjaW9zIj4gPGcgdHJhbnNmb3JtPSJ0cmFuc2xhdGUoLTM0MC4xNiwtMjE4LjMxKSI+PHBhdGggZmlsbD0iIzg0QkQwMCIgZmlsbC1ydWxlPSJub256ZXJvIiBkPSJNIDYzNi43MyAzNjYuMyBDIDY1NS43MyAzNDcuMzIgNjY0LjkyIDMyMS43MSA2NjEuMzIgMjk3LjgyIEMgNjYwLjkxIDI5NS4xMSA2NTkuNTYgMjkyLjY2IDY1Ny41MSAyOTAuODUgQyA2NDkuMDYgMjgzLjQxIDYzOC4wMyAyNzkuNDkgNjI1LjYgMjc5LjQ5IEMgNjA2LjY0IDI3OS40OSA1ODYuOCAyODguNDggNTcxLjE0IDMwNC4xNCBMIDUzNC4yMSAzNDEuMDUgTCA0OTYuMDggMzAyLjkzIEwgNTE5LjEgMjc5LjkxIEwgNTIwLjMzIDI3OC40NCBMIDUwNC4xNSAyNjIuMjUgTCA1MDIuNyAyNjMuNDggTCA0NzkuNjYgMjg2LjUgTCA0NjguNjEgMjc1LjQ2IEwgNDY4LjU5IDI3NS40MyBMIDQzOC4yMSAyNDUuMDggQyA0MjEuMjMgMjI4LjA1IDM5OS42NyAyMTguMzEgMzc5LjE0IDIxOC4zMSBDIDM2NS43NSAyMTguMzEgMzUzLjg3IDIyMi41MiAzNDQuOCAyMzAuNSBDIDM0Mi43MyAyMzIuMyAzNDEuMzkgMjM0Ljc4IDM0MSAyMzcuNDggQyAzMzcuMDkgMjYzLjQgMzQ3LjA2IDI5MS4xOSAzNjcuNjggMzExLjgyIEMgMzg1LjE4IDMyOS4zMiA0MDguMjUgMzM5LjM0IDQzMC45NSAzMzkuMzQgQyA0MzcuOTkgMzM5LjM0IDQ0NC44NCAzMzguMzggNDUxLjI5IDMzNi40OSBDIDQ2MS44NiAzMzMuMzggNDcxLjA0IDMyNy45NyA0NzguNiAzMjAuNDIgTCA0NzkuNjYgMzE5LjM1IEwgNTE3Ljc3IDM1Ny40NyBMIDQ3My4xIDQwMi4xNiBMIDQ3Mi45IDQwMS45MyBMIDQ3Mi44NyA0MDEuOTEgTCA0NDAuMyAzNjkuMzMgQyA0MjUuODcgMzU0LjkgNDA3LjU1IDM0Ni42MSAzOTAuMDUgMzQ2LjYxIEMgMzc4LjQ3IDM0Ni42MSAzNjguMiAzNTAuMjggMzYwLjMyIDM1Ny4yIEMgMzU4LjI3IDM1OSAzNTYuOTMgMzYxLjQ5IDM1Ni41MSAzNjQuMTkgQyAzNTMuMTkgMzg2LjIzIDM2MS42NiA0MDkuODUgMzc5LjE0IDQyNy4zNCBDIDM5My45NyA0NDIuMTggNDEzLjU2IDQ1MC42OCA0MzIuODYgNDUwLjY4IEMgNDM4Ljg3IDQ1MC42OCA0NDQuNzMgNDQ5Ljg2IDQ1MC4yNCA0NDguMjQgQyA0NTYuMjMgNDQ2LjQ3IDQ2MS42OCA0NDMuODUgNDY2LjU3IDQ0MC40MSBDIDQ2Ny44NSA0MzkuODMgNDY5LjA2IDQzOS4wNSA0NzAuMTEgNDM3Ljk5IEwgNDczLjEgNDM0Ljk5IEwgNTExLjYyIDQ3My41IEwgNTAyLjc0IDQ4Mi4zOCBMIDUwMi4xNyA0ODIuMzUgQyA0OTcuNTYgNDc4LjQ4IDQ5Mi4yMiA0NzUuNjUgNDg2LjI1IDQ3My44OCBDIDQ4MS44MiA0NzIuNTkgNDc3LjE0IDQ3MS45NCA0NzIuMzYgNDcxLjk0IEMgNDU3LjExIDQ3MS45NCA0NDEuNjUgNDc4LjYyIDQyOS45NiA0OTAuMzEgQyA0MTYuMTggNTA0LjEgNDA5LjUxIDUyMi43NyA0MTIuMTQgNTQwLjI0IEMgNDEyLjU1IDU0Mi45NCA0MTMuODkgNTQ1LjQxIDQxNS45NiA1NDcuMjQgQyA0MjIuNCA1NTIuODkgNDMwLjc5IDU1NS44OSA0NDAuMTcgNTU1LjkgTCA0NDAuMTkgNTU1LjkgQyA0NTQuMDkgNTU1LjkgNDY4LjYxIDU0OS4zNiA0NzkuOTkgNTM3Ljk5IEwgNDkwLjQ0IDUyNy41NCBMIDQ5MC40NCA1NjYuNCBDIDQ5MC40OCA1ODQuOTcgNTA1LjU2IDYwMC4wNiA1MjQuMTQgNjAwLjA2IEwgNTI1LjQ0IDU5OS45NyBMIDUyNS40NCA1NzYuOTEgTCA1MjQuMTQgNTc2LjgyIEMgNTE4LjM3IDU3Ni44MiA1MTMuNjYgNTcyLjEyIDUxMy42NiA1NjYuMzYgTCA1MTMuNjYgNTA0LjMxIEwgNTI4LjA2IDQ4OS45IEMgNTMzLjgzIDQ5NS4yOSA1NDAuNzEgNDk5LjE4IDU0OC41NCA1MDEuNDkgQyA1NTMuNjYgNTAyLjk5IDU1OS4wOCA1MDMuNzUgNTY0LjYyIDUwMy43NSBMIDU2NC42NCA1MDMuNzUgQyA1ODIuNDUgNTAzLjc1IDYwMC41NSA0OTUuOTEgNjE0LjIyIDQ4Mi4yMiBDIDYzMC4zNSA0NjYuMDkgNjM4LjE2IDQ0NC4yOCA2MzUuMDcgNDIzLjkgQyA2MzQuNjcgNDIxLjIxIDYzMy4zMyA0MTguNzMgNjMxLjI2IDQxNi45MiBDIDYyMy45MiA0MTAuNDYgNjE0LjM0IDQwNy4wMyA2MDMuNTYgNDA3LjAzIEMgNTg3LjM4IDQwNy4wMyA1NzAuNDUgNDE0LjY4IDU1Ny4xNCA0MjggTCA1MjguMDUgNDU3LjA5IEwgNDg5LjUyIDQxOC41NyBMIDUzNC4yMSAzNzMuODkgTCA1MzcgMzc2LjY5IEMgNTM3LjY5IDM3Ny4zOCA1MzguNDYgMzc3Ljk2IDUzOS4yNiAzNzguNDUgQyA1NDUuMjMgMzgzLjIgNTUyLjA3IDM4Ni43NSA1NTkuNyAzODguOTkgQyA1NjUuNjcgMzkwLjc2IDU3MiAzOTEuNjQgNTc4LjQ4IDM5MS42NCBDIDU5OS40MSAzOTEuNjQgNjIwLjYzIDM4Mi40IDYzNi43MyAzNjYuMyBNIDU0NC41IDQ3My40NyBMIDU1Mi4xOSA0NjUuNzggTCA1NzMuNTYgNDQ0LjQxIEMgNTgyLjQyIDQzNS41NSA1OTMuNjQgNDMwLjI3IDYwMy41NiA0MzAuMjcgQyA2MDYuMTEgNDMwLjI3IDYwOS40MiA0MzAuNjIgNjEyLjUxIDQzMi4xIEMgNjEyLjY3IDQ0My43OSA2MDcuMjggNDU2LjMyIDU5Ny44IDQ2NS44IEMgNTg4LjQ1IDQ3NS4xNyA1NzYuMzUgNDgwLjU0IDU2NC42NCA0ODAuNTQgQyA1NjEuMjkgNDgwLjU0IDU1OC4wOSA0ODAuMDkgNTU1LjA5IDQ3OS4yMSBDIDU1MS4wNCA0NzguMDIgNTQ3LjUgNDc2LjEgNTQ0LjUgNDczLjQ3IE0gNDg1Ljk3IDQ5OS4xNiBMIDQ2My41NiA1MjEuNTcgQyA0NTYuNjEgNTI4LjUzIDQ0Ny44OCA1MzIuNjggNDQwLjE5IDUzMi42OCBMIDQ0MC4xNyA1MzIuNjggQyA0MzguNjQgNTMyLjY4IDQzNi42OCA1MzIuNDggNDM0LjgyIDUzMS44MiBDIDQzNS4wOSA1MjMuMDkgNDM5LjI5IDUxMy44NCA0NDYuMzkgNTA2LjczIEMgNDUzLjc1IDQ5OS4zOSA0NjMuMjIgNDk1LjE2IDQ3Mi4zNiA0OTUuMTYgQyA0NzQuOTQgNDk1LjE2IDQ3Ny40IDQ5NS40OSA0NzkuNjkgNDk2LjE3IEMgNDgyLjAxIDQ5Ni44NSA0ODQuMTEgNDk3Ljg2IDQ4NS45NyA0OTkuMTYgTSA0NTYuNjggNDE4LjU3IEMgNDUzLjA3IDQyMS45OSA0NDguNyA0MjQuNDggNDQzLjY5IDQyNS45NSBDIDQ0MC4zIDQyNi45NSA0MzYuNjQgNDI3LjQ2IDQzMi44NiA0MjcuNDYgQyA0MTkuNjYgNDI3LjQ2IDQwNi4wOSA0MjEuNDMgMzk1LjU3IDQxMC45MyBDIDM4NC43MiA0MDAuMDcgMzc4LjYzIDM4NS42NyAzNzkuMDYgMzcyLjMgQyAzODIuODIgMzcwLjMzIDM4Ni45MyAzNjkuODUgMzkwLjA1IDM2OS44NSBDIDQwMS4yNyAzNjkuODUgNDEzLjg5IDM3NS43OSA0MjMuODggMzg1Ljc1IFogTSA0NjMuMjMgMzAyLjkzIEwgNDYyLjE4IDMwNCBDIDQ1Ny4zOSAzMDguNzggNDUxLjU0IDMxMi4yMiA0NDQuNzUgMzE0LjIxIEMgNDQwLjQxIDMxNS40OCA0MzUuNzcgMzE2LjEyIDQzMC45NSAzMTYuMTIgQyA0MTQuMzYgMzE2LjEyIDM5Ny4zIDMwOC41NyAzODQuMTEgMjk1LjQgQyAzNzAuMTQgMjgxLjQzIDM2Mi40OCAyNjIuNyAzNjMuNDcgMjQ1LjQ5IEMgMzY4LjgxIDI0Mi4yOSAzNzQuNzUgMjQxLjU0IDM3OS4xNCAyNDEuNTQgQyAzOTMuMzQgMjQxLjU0IDQwOS4yOSAyNDguOTkgNDIxLjggMjYxLjUgWiBNIDYzOC44IDMwNS44OSBDIDYzOS41IDMyMS4wNyA2MzIuNjYgMzM3LjU1IDYyMC4zMiAzNDkuOSBDIDYwOC41NCAzNjEuNjYgNTkzLjMgMzY4LjQzIDU3OC40OCAzNjguNDMgQyA1NzQuMiAzNjguNDMgNTcwLjA5IDM2Ny44NiA1NjYuMjUgMzY2LjcxIEMgNTYwLjI0IDM2NC45NCA1NTUuMDcgMzYxLjkyIDU1MC44NSAzNTcuNjkgTCA1NTAuNjQgMzU3LjQ3IEwgNTg3LjU0IDMyMC41NiBDIDU5OC43MyAzMDkuMzkgNjEyLjk1IDMwMi43MSA2MjUuNiAzMDIuNzEgQyA2MjkuMyAzMDIuNzEgNjM0LjI5IDMwMy4zMiA2MzguOCAzMDUuODkiLz48L2c+IDxnIHRyYW5zZm9ybT0idHJhbnNsYXRlKDE1MS42NSwtNTI5LjE1KSI+PHBhdGggZmlsbD0iIzg0QkQwMCIgZmlsbC1ydWxlPSJub256ZXJvIiBkPSJNIDc4My44OSA3NTEuMTMgTCA3NDUuOTMgNjUyLjQzIEwgNzI2LjkxIDY1Mi40MyBMIDY4OC44OCA3NTEuMTMgTCA3MDguMzQgNzUxLjEzIEwgNzE2LjQgNzMwLjggTCA3NTYuNzEgNzMwLjggTCA3NjQuNDMgNzUxLjEzIFogTSA3NDkuNjUgNzEyLjU1IEwgNzIzLjM4IDcxMi41NSBMIDczNi41NSA2NzguNTQgWiBNIDY2My42NiA3NTEuMTMgTCA2ODEuODMgNzUxLjEzIEwgNjY1LjE5IDY1Mi40MyBMIDY0Ny4wOSA2NTIuNDMgTCA2MjMuOTEgNzIxLjI4IEwgNjAxLjA1IDY1Mi40MyBMIDU4Mi42NyA2NTIuNDMgTCA1NjUuNjIgNzUxLjEzIEwgNTg0LjAyIDc1MS4xMyBMIDU5NC44MiA2ODguOCBMIDYxNS41MSA3NTEuMTMgTCA2MzIuMDcgNzUxLjEzIEwgNjUzLjA1IDY4OC44IFogTSAzNDcuNDYgNjUyLjQzIEwgMzI4LjQyIDY1Mi40MyBMIDI5MC40MSA3NTEuMTMgTCAzMDkuODcgNzUxLjEzIEwgMzE3LjkzIDczMC44IEwgMzU4LjIzIDczMC44IEwgMzY1Ljk1IDc1MS4xMyBMIDM4NS40IDc1MS4xMyBaIE0gMzM4LjA3IDY3OC41NCBMIDM1MS4xNiA3MTIuNTUgTCAzMjQuOSA3MTIuNTUgWiBNIDI0My4xNyA2NzkuMDUgQyAyNDIuMDUgNjc3LjU1IDI0MS40OSA2NzUuOTkgMjQxLjQ5IDY3NC4zMyBDIDI0MS40OSA2NzIuMzUgMjQyLjQzIDY3MC43NSAyNDQuMyA2NjkuNDggQyAyNDUuOTUgNjY4LjM5IDI0Ny44MSA2NjcuODggMjQ5Ljg2IDY2Ny44OCBDIDI1NC44OSA2NjcuODggMjU5Ljg0IDY3MS4yOSAyNjQuNyA2NzguMTQgTCAyNzguNiA2NjUuODYgQyAyNjkuNDYgNjU1LjI2IDI1OS45OCA2NDkuOTUgMjUwLjA4IDY0OS45NSBDIDI0Mi43NCA2NDkuOTUgMjM2LjQ2IDY1Mi4yNyAyMzEuMjQgNjU2Ljg1IEMgMjI1LjczIDY2MS42NSAyMjIuOTcgNjY3LjY1IDIyMi45NyA2NzQuOSBDIDIyMi45NyA2ODEuMjQgMjI1Ljk4IDY4Ny43OCAyMzEuOTUgNjk0LjUzIEMgMjM0Ljg1IDY5Ny44MyAyNDAuMzQgNzAyLjc5IDI0OC40MyA3MDkuMzkgQyAyNTIuNzcgNzEyLjk2IDI1NS41NSA3MTUuNDMgMjU2Ljg4IDcxNi44MyBDIDI2MC4xNyA3MjAuMzIgMjYxLjgyIDcyMy41MyAyNjEuODIgNzI2LjQ2IEMgMjYxLjgyIDcyOS4yNSAyNjAuNTcgNzMxLjU1IDI1OC4wOCA3MzMuMzUgQyAyNTUuODQgNzM0Ljk5IDI1My4zIDczNS44NCAyNTAuNDQgNzM1Ljg0IEMgMjQ0LjI5IDczNS44NCAyMzguODUgNzMxLjQ1IDIzNC4xMSA3MjIuNjggTCAyMTguMzYgNzMyLjIxIEMgMjI1LjUxIDc0Ni40OSAyMzYuMDggNzUzLjYxIDI1MC4wOCA3NTMuNjEgQyAyNTguNzEgNzUzLjYxIDI2NS44NCA3NTEuMTMgMjcxLjQ4IDc0Ni4xNiBDIDI3Ny4zOCA3NDAuOTggMjgwLjMzIDczNC4xMyAyODAuMzMgNzI1LjY0IEMgMjgwLjMzIDcxNy43MyAyNzYuODUgNzEwLjIxIDI2OS44OSA3MDMuMDkgQyAyNjguNTEgNzAxLjY2IDI2NC4xNiA2OTcuODggMjU2LjkgNjkxLjc3IEMgMjQ5LjMxIDY4NS4zNCAyNDQuNzMgNjgxLjExIDI0My4xNyA2NzkuMDUgTSA0MTkuMDQgNjUyLjQzIEwgNDAwLjEgNjUyLjQzIEwgNDAwLjEgNzUxLjEzIEwgNDE5LjA0IDc1MS4xMyBMIDQxOS4wNCA3MDcuMzEgTCA0NDkuNTIgNzUxLjEzIEwgNDcxLjgyIDc1MS4xMyBMIDQzMy45NSA2OTYuNDUgTCA0NjguNDggNjUyLjQzIEwgNDQ1Ljg0IDY1Mi40MyBMIDQxOS4wNCA2ODYuMzggWiBNIDUwMy4yOSA2NTIuNDMgTCA0ODQuNSA2NTIuNDMgTCA0ODQuNSA3MTEuMjcgQyA0ODQuNSA3MjMuMDMgNDg1LjY0IDczMS40IDQ4Ny45MyA3MzYuMzEgQyA0OTAuNDggNzQxLjg2IDQ5NC42MSA3NDYuMiA1MDAuMzQgNzQ5LjMzIEMgNTA1LjY2IDc1Mi4xOCA1MTEuNTUgNzUzLjYxIDUxNy45OSA3NTMuNjEgQyA1MjguNjMgNzUzLjYxIDUzNy4wNiA3NTAuMTEgNTQzLjI4IDc0My4wOSBDIDU0Ny4wNCA3MzguODQgNTQ5LjQ0IDczMy44NyA1NTAuNDYgNzI4LjE4IEMgNTUxLjA0IDcyNS4wNSA1NTEuMzMgNzE5LjQyIDU1MS4zMyA3MTEuMjcgTCA1NTEuMzMgNjUyLjQzIEwgNTMyLjU1IDY1Mi40MyBMIDUzMi41NSA3MTQuMDEgQyA1MzIuNTUgNzIwLjYyIDUzMi4xIDcyNS4xMSA1MzEuMiA3MjcuNDUgQyA1MjkuMDQgNzMyLjg3IDUyNC41IDczNS41NyA1MTcuNTggNzM1LjU3IEMgNTE0LjQzIDczNS41NyA1MTEuNzYgNzM0Ljg3IDUwOS41NiA3MzMuNDkgQyA1MDYuNzggNzMxLjgzIDUwNC45NiA3MjkuMzMgNTA0LjA5IDcyNS45NyBDIDUwMy41NyA3MjMuOTUgNTAzLjI5IDcyMC43NyA1MDMuMjkgNzE2LjM3IFogTSA1OTQuMjggNzk1LjM4IEwgNTk0LjExIDc5NS41NiBMIDU5NS40NiA3OTYuOTIgQyA1OTYuNDEgNzk3Ljg1IDU5Ny41MiA3OTguNDggNTk4Ljc2IDc5OC44NiBDIDU5OS41NCA3OTkuMDkgNjAwLjM5IDc5OS4yMSA2MDEuMjUgNzk5LjIxIEMgNjA0LjA1IDc5OS4yMSA2MDcuMDIgNzk4IDYwOS4zNyA3OTUuNjYgQyA2MTIuMSA3OTIuOTIgNjEzLjMgNzg5LjM0IDYxMi44MiA3ODYuMiBDIDYxMS43NyA3ODUuMjcgNjEwLjM4IDc4NC44MiA2MDguODkgNzg0LjgyIEMgNjA2LjQzIDc4NC44MiA2MDMuNjQgNzg2IDYwMS40MSA3ODguMjUgWiBNIDU5NC4yOCA3OTUuMzgiLz48cGF0aCBmaWxsPSIjNzQ0RjI4IiBmaWxsLXJ1bGU9Im5vbnplcm8iIGQ9Ik0gNzc1LjggODIwLjc3IEwgNzgzLjAyIDgxMy41NCBDIDc3OS4yMSA4MDguNDEgNzc0LjExIDgwNS44NCA3NjcuNyA4MDUuODQgQyA3NjMuNTkgODA1Ljg0IDc2MC4xMSA4MDcuMDMgNzU3LjI0IDgwOS40IEMgNzU0LjEyIDgxMS45NCA3NTIuNTUgODE1LjIxIDc1Mi41NSA4MTkuMjEgQyA3NTIuNTUgODI0Ljk0IDc1Ni4zMiA4MjkuNyA3NjMuODQgODMzLjQ3IEwgNzY3Ljc3IDgzNS40MyBDIDc3MS4xNCA4MzcuMTIgNzcyLjg1IDgzOC44OCA3NzIuODUgODQwLjcxIEMgNzcyLjg1IDg0MS44OCA3NzIuMjcgODQyLjggNzcxLjA5IDg0My41NCBDIDc3MC4wOSA4NDQuMTEgNzY4Ljk4IDg0NC40IDc2Ny43MiA4NDQuNCBDIDc2NC4zMiA4NDQuNCA3NjEuMDcgODQyLjU5IDc1OC4wMyA4MzkgTCA3NTAuODYgODQ2LjgzIEMgNzU0LjkxIDg1Mi4xMyA3NjAuMzIgODU0Ljc5IDc2Ny4xMiA4NTQuNzkgQyA3NzEuNzggODU0Ljc5IDc3NS42OCA4NTMuNTYgNzc4Ljc5IDg1MS4xIEMgNzgyLjE3IDg0OC40MiA3ODMuODkgODQ0LjggNzgzLjg5IDg0MC4yNyBDIDc4My44OSA4MzYuNjQgNzgyLjczIDgzMy41NiA3ODAuNDIgODMxLjAzIEMgNzc4LjcxIDgyOS4xMyA3NzUuOTUgODI3LjIzIDc3Mi4xIDgyNS4zMiBMIDc2Ny44MyA4MjMuMTYgQyA3NjUuMDQgODIxLjc4IDc2My42NCA4MjAuNDggNzYzLjY0IDgxOS4yOSBDIDc2My42NCA4MTcuMzQgNzY1LjA0IDgxNi4zOCA3NjcuODIgODE2LjM4IEMgNzcwLjIxIDgxNi4zOCA3NzIuODcgODE3Ljg0IDc3NS44IDgyMC43NyBNIDc0NS4yMiA4NDIuNTkgQyA3NDcuMzkgODM4Ljc4IDc0OC40NyA4MzQuNjcgNzQ4LjQ3IDgzMC4yOCBDIDc0OC40NyA4MjUuOSA3NDcuMzkgODIxLjgzIDc0NS4yMiA4MTguMDUgQyA3NDMuMDYgODE0LjI4IDc0MC4wNCA4MTEuMjkgNzM2LjE4IDgwOS4xMyBDIDczMi4zMiA4MDYuOTQgNzI4LjE4IDgwNS44NCA3MjMuOCA4MDUuODQgQyA3MTcuNjkgODA1Ljg0IDcxMi4zMSA4MDcuOTUgNzA3LjY2IDgxMi4xOCBDIDcwMi4zMiA4MTcgNjk5LjY4IDgyMy4wNSA2OTkuNjggODMwLjM2IEMgNjk5LjY4IDgzNy4xNCA3MDIuMDEgODQyLjkxIDcwNi42OCA4NDcuNjYgQyA3MTEuMzUgODUyLjQyIDcxNy4wOCA4NTQuNzkgNzIzLjg0IDg1NC43OSBDIDcyOC4zNyA4NTQuNzkgNzMyLjUyIDg1My43IDczNi4zMSA4NTEuNTYgQyA3NDAuMDkgODQ5LjQgNzQzLjA2IDg0Ni40MSA3NDUuMjIgODQyLjU5IE0gNzM2LjYyIDgzMC4zMiBDIDczNi42MiA4MzQuMTUgNzM1LjQ3IDgzNy4zNCA3MzMuMTggODM5LjkxIEMgNzMwLjgxIDg0Mi41NSA3MjcuNzMgODQzLjg4IDcyMy45MyA4NDMuODggQyA3MjAuMTIgODQzLjg4IDcxNy4wNCA4NDIuNTUgNzE0LjcxIDgzOS45MSBDIDcxMi40NiA4MzcuMzkgNzExLjM1IDgzNC4xOSA3MTEuMzUgODMwLjMyIEMgNzExLjM1IDgyNi41MiA3MTIuNDggODIzLjM0IDcxNC43NyA4MjAuOCBDIDcxNy4xMyA4MTguMTggNzIwLjIzIDgxNi44OCA3MjMuOTcgODE2Ljg4IEMgNzI3LjggODE2Ljg4IDczMC44OCA4MTguMTUgNzMzLjE4IDgyMC43MSBDIDczNS40NyA4MjMuMjUgNzM2LjYyIDgyNi40NiA3MzYuNjIgODMwLjMyIE0gNjkyLjkgODAwLjgxIEMgNjk0LjM0IDc5OS4zNiA2OTUuMDYgNzk3LjU4IDY5NS4wNiA3OTUuNTEgQyA2OTUuMDYgNzkzLjQgNjk0LjMzIDc5MS42MiA2OTIuODggNzkwLjEzIEMgNjkxLjQyIDc4OC42NiA2ODkuNjcgNzg3LjkyIDY4Ny42IDc4Ny45MiBDIDY4NS41NCA3ODcuOTIgNjgzLjggNzg4LjY1IDY4Mi4zNiA3OTAuMSBDIDY4MC45IDc5MS41NCA2ODAuMTggNzkzLjMgNjgwLjE4IDc5NS4zNCBDIDY4MC4xOCA3OTcuNDggNjgwLjkgNzk5LjI5IDY4Mi4zNiA4MDAuNzggQyA2ODMuOCA4MDIuMjggNjg1LjU2IDgwMy4wMiA2ODcuNjggODAzLjAyIEMgNjg5LjczIDgwMy4wMiA2OTEuNDYgODAyLjMgNjkyLjkgODAwLjgxIE0gNjY2LjQ5IDgyMS44IEwgNjc2LjIxIDgxNi40NSBDIDY3MS4zMiA4MDkuMzggNjY0LjE2IDgwNS44NCA2NTQuNzMgODA1Ljg0IEMgNjQ5Ljc1IDgwNS44NCA2NDUuMjMgODA2Ljk0IDY0MS4yMSA4MDkuMTEgQyA2MzcuMTcgODExLjI3IDYzNC4wMyA4MTQuMjMgNjMxLjc5IDgxOCBDIDYyOS41MSA4MjEuNzUgNjI4LjM4IDgyNS45MyA2MjguMzggODMwLjQ4IEMgNjI4LjM4IDgzNy43OSA2MzAuOTQgODQzLjcxIDYzNi4wNyA4NDguMjQgQyA2NDAuOTkgODUyLjYgNjQ3LjE0IDg1NC43OSA2NTQuNTYgODU0Ljc5IEMgNjYzLjY0IDg1NC43OSA2NzAuNyA4NTEuNTUgNjc1LjcgODQ1LjA3IEwgNjY2LjQ5IDgzOC43OSBDIDY2My41OCA4NDIuMzIgNjU5LjU0IDg0NC4wOSA2NTQuMzIgODQ0LjA5IEMgNjUwLjE4IDg0NC4wOSA2NDYuODIgODQyLjg5IDY0NC4yMyA4NDAuNDYgQyA2NDEuNTUgODM4IDY0MC4yMyA4MzQuNzMgNjQwLjIzIDgzMC42NiBDIDY0MC4yMyA4MjYuNDYgNjQxLjYyIDgyMy4wNyA2NDQuNDIgODIwLjUgQyA2NDcuMTIgODE4IDY1MC41OCA4MTYuNzUgNjU0Ljg0IDgxNi43NSBDIDY1OS4zNiA4MTYuNzUgNjYzLjI0IDgxOC40MyA2NjYuNDkgODIxLjggTSA2MTkuNDEgODQyLjU5IEMgNjIxLjU5IDgzOC43OCA2MjIuNjYgODM0LjY3IDYyMi42NiA4MzAuMjggQyA2MjIuNjYgODI1LjkgNjIxLjU5IDgyMS44MyA2MTkuNDEgODE4LjA1IEMgNjE3LjI0IDgxNC4yOCA2MTQuMjEgODExLjI5IDYxMC4zNiA4MDkuMTMgQyA2MDYuNDkgODA2Ljk0IDYwMi4zNSA4MDUuODQgNTk3Ljk2IDgwNS44NCBDIDU5MS44NiA4MDUuODQgNTg2LjQ4IDgwNy45NSA1ODEuODQgODEyLjE4IEMgNTc2LjUxIDgxNyA1NzMuODQgODIzLjA1IDU3My44NCA4MzAuMzYgQyA1NzMuODQgODM3LjE0IDU3Ni4xOCA4NDIuOTEgNTgwLjg1IDg0Ny42NiBDIDU4NS41MyA4NTIuNDIgNTkxLjI0IDg1NC43OSA1OTggODU0Ljc5IEMgNjAyLjUzIDg1NC43OSA2MDYuNjggODUzLjcgNjEwLjQ5IDg1MS41NiBDIDYxNC4yNSA4NDkuNCA2MTcuMjQgODQ2LjQxIDYxOS40MSA4NDIuNTkgTSA2MTAuODEgODMwLjMyIEMgNjEwLjgxIDgzNC4xNSA2MDkuNjQgODM3LjM0IDYwNy4zNCA4MzkuOTEgQyA2MDQuOTkgODQyLjU1IDYwMS45MSA4NDMuODggNTk4LjA5IDg0My44OCBDIDU5NC4yOCA4NDMuODggNTkxLjIyIDg0Mi41NSA1ODguODkgODM5LjkxIEMgNTg2LjY0IDgzNy4zOSA1ODUuNTEgODM0LjE5IDU4NS41MSA4MzAuMzIgQyA1ODUuNTEgODI2LjUyIDU4Ni42NiA4MjMuMzQgNTg4LjkzIDgyMC44IEMgNTkxLjMyIDgxOC4xOCA1OTQuMzkgODE2Ljg4IDU5OC4xNCA4MTYuODggQyA2MDEuOTggODE2Ljg4IDYwNS4wNSA4MTguMTUgNjA3LjM0IDgyMC43MSBDIDYwOS42NCA4MjMuMjUgNjEwLjgxIDgyNi40NiA2MTAuODEgODMwLjMyIE0gNTYyLjk1IDg2NC4yOSBDIDU2Ni4xMiA4NjAuNTQgNTY3LjcgODU0Ljc2IDU2Ny43IDg0Ni45MSBMIDU2Ny43IDgwNy4wNCBMIDU1NiA4MDcuMDQgTCA1NTYgODEyLjE4IEMgNTUxLjU1IDgwNy45NSA1NDYuNjMgODA1Ljg0IDU0MS4yNyA4MDUuODQgQyA1MzUuNTUgODA1Ljg0IDUzMC42MSA4MDcuODcgNTI2LjUgODExLjkyIEMgNTIxLjkzIDgxNi40IDUxOS42NSA4MjIuMzMgNTE5LjY1IDgyOS43MiBDIDUxOS42NSA4MzYuMzYgNTIxLjY4IDg0MS45NiA1MjUuNzcgODQ2LjUgQyA1MjkuOTggODUxLjIyIDUzNS4zNyA4NTMuNTkgNTQxLjkxIDg1My41OSBDIDU0Ny40NyA4NTMuNTkgNTUyLjE4IDg1MS42NyA1NTYgODQ3LjgxIEMgNTU2IDg1MS41OSA1NTUuNjQgODU0LjI2IDU1NC44NiA4NTUuOCBDIDU1My4wNiA4NTkuMjkgNTQ5LjE4IDg2MS4wMyA1NDMuMjIgODYxLjAzIEMgNTM4LjM1IDg2MS4wMyA1MzQuNzUgODU5LjY5IDUzMi40NSA4NTcuMDIgTCA1MTkuNiA4NTcuMDIgQyA1MjAuNjQgODYwLjE4IDUyMi4yMiA4NjIuODYgNTI0LjM2IDg2NS4wOSBDIDUyOC43IDg2OS41NyA1MzUuMTYgODcxLjgxIDU0My43MyA4NzEuODEgQyA1NTIuMjYgODcxLjgxIDU1OC42OCA4NjkuMzEgNTYyLjk1IDg2NC4yOSBNIDU1Ni42MSA4MjkuODQgQyA1NTYuNjEgODMzLjY0IDU1NS40OSA4MzYuNzcgNTUzLjI1IDgzOS4yIEMgNTUwLjk2IDg0MS43MSA1NDcuOTEgODQyLjk4IDU0NC4xOCA4NDIuOTggQyA1NDAuMzcgODQyLjk4IDUzNy4yOSA4NDEuNzMgNTM0LjkgODM5LjIzIEMgNTMyLjUgODM2LjcyIDUzMS4zMSA4MzMuNTcgNTMxLjMxIDgyOS43NiBDIDUzMS4zMSA4MjYuMDQgNTMyLjQ3IDgyMi45NSA1MzQuODYgODIwLjQ4IEMgNTM3LjIzIDgxOC4wMiA1NDAuMjUgODE2Ljc5IDU0My45NSA4MTYuNzkgQyA1NDcuNzcgODE2Ljc5IDU1MC44MyA4MTguMDIgNTUzLjE0IDgyMC40NiBDIDU1NS40NyA4MjIuOTEgNTU2LjYxIDgyNi4wNCA1NTYuNjEgODI5Ljg0IE0gNTEzLjQzIDgzMy42OSBMIDUxMy40NSA4MzEuNDcgQyA1MTMuNiA4MjMuOTIgNTExLjI5IDgxNy43IDUwNi41NyA4MTIuODcgQyA1MDEuOTggODA4LjE5IDQ5NiA4MDUuODQgNDg4LjY5IDgwNS44NCBDIDQ4MS42NiA4MDUuODQgNDc1Ljg5IDgwOC4yMSA0NzEuMzkgODEyLjkzIEMgNDY2Ljg2IDgxNy42NCA0NjQuNTkgODIzLjUyIDQ2NC41OSA4MzAuNTcgQyA0NjQuNTkgODM3LjcgNDY2LjkyIDg0My41MiA0NzEuNjEgODQ4LjA0IEMgNDc2LjI2IDg1Mi41NCA0ODIuMTcgODU0Ljc5IDQ4OS4zNCA4NTQuNzkgQyA0OTguNTMgODU0Ljc5IDUwNS41NCA4NTEuMzggNTEwLjMzIDg0NC41NiBMIDUwMC41IDgzOS45NCBDIDQ5Ny4zNyA4NDIuOTcgNDkzLjYyIDg0NC40NyA0ODkuMjcgODQ0LjQ3IEMgNDg1Ljc0IDg0NC40NyA0ODIuNzggODQzLjU0IDQ4MC4zOSA4NDEuNjQgQyA0NzcuOTggODM5Ljc2IDQ3Ni41IDgzNy4xMSA0NzUuOTMgODMzLjY5IFogTSA1MDEuNjUgODI0LjQ1IEwgNDc2LjQ1IDgyNC40NSBDIDQ3Ny43NSA4MjEuNjEgNDc5LjE3IDgxOS42MiA0ODAuNzEgODE4LjQ3IEMgNDgzLjE2IDgxNi42NiA0ODYgODE1Ljc3IDQ4OS4yNSA4MTUuNzcgQyA0OTIuMTEgODE1Ljc3IDQ5NC43IDgxNi41NSA0OTcuMDEgODE4LjEgQyA0OTkuMzIgODE5LjY2IDUwMC44NiA4MjEuNzcgNTAxLjY1IDgyNC40NSBNIDQ0Ni44NCA4NTMuNTkgTCA0NTguNDQgODUzLjU5IEwgNDU4LjQ0IDgyMi44NCBDIDQ1OC40NCA4MTcuNDUgNDU3LjA5IDgxMy4zOCA0NTQuMzkgODEwLjY4IEMgNDUxLjIgODA3LjQ2IDQ0Ny4yNyA4MDUuODQgNDQyLjY0IDgwNS44NCBDIDQzOC4xNiA4MDUuODQgNDMzLjU5IDgwNy44MiA0MjguODUgODExLjc5IEwgNDI4Ljg1IDgwNy4wNCBMIDQxNy4xNiA4MDcuMDQgTCA0MTcuMTYgODUzLjU5IEwgNDI4Ljg1IDg1My41OSBMIDQyOC44NSA4MzQuOTIgQyA0MjguODUgODMwLjA4IDQyOS4wMSA4MjYuOTMgNDI5LjM1IDgyNS40OCBDIDQzMC43NCA4MTkuNTEgNDMzLjk0IDgxNi41NCA0MzguOTMgODE2LjU0IEMgNDQwLjc1IDgxNi41NCA0NDIuMjkgODE3LjAyIDQ0My41MyA4MTcuOTUgQyA0NDUuMTggODE5LjI1IDQ0Ni4yMiA4MjEuNjUgNDQ2LjYzIDgyNS4xMyBDIDQ0Ni43NyA4MjYuMjcgNDQ2Ljg0IDgyOC45NiA0NDYuODQgODMzLjIgWiBNIDQwNy43NiA4NDIuNTkgQyA0MDkuOTQgODM4Ljc4IDQxMS4wMiA4MzQuNjcgNDExLjAyIDgzMC4yOCBDIDQxMS4wMiA4MjUuOSA0MDkuOTQgODIxLjgzIDQwNy43NiA4MTguMDUgQyA0MDUuNjEgODE0LjI4IDQwMi41OCA4MTEuMjkgMzk4LjcyIDgwOS4xMyBDIDM5NC44NiA4MDYuOTQgMzkwLjczIDgwNS44NCAzODYuMzMgODA1Ljg0IEMgMzgwLjI0IDgwNS44NCAzNzQuODUgODA3Ljk1IDM3MC4yMSA4MTIuMTggQyAzNjQuODYgODE3IDM2Mi4yMSA4MjMuMDUgMzYyLjIxIDgzMC4zNiBDIDM2Mi4yMSA4MzcuMTQgMzY0LjU0IDg0Mi45MSAzNjkuMjEgODQ3LjY2IEMgMzczLjg4IDg1Mi40MiAzNzkuNiA4NTQuNzkgMzg2LjM3IDg1NC43OSBDIDM5MC45MSA4NTQuNzkgMzk1LjA3IDg1My43IDM5OC44NSA4NTEuNTYgQyA0MDIuNjIgODQ5LjQgNDA1LjYxIDg0Ni40MSA0MDcuNzYgODQyLjU5IE0gMzk5LjE3IDgzMC4zMiBDIDM5OS4xNyA4MzQuMTUgMzk4IDgzNy4zNCAzOTUuNyA4MzkuOTEgQyAzOTMuMzUgODQyLjU1IDM5MC4yNyA4NDMuODggMzg2LjQ2IDg0My44OCBDIDM4Mi42NSA4NDMuODggMzc5LjU5IDg0Mi41NSAzNzcuMjUgODM5LjkxIEMgMzc1LjAxIDgzNy4zOSAzNzMuODggODM0LjE5IDM3My44OCA4MzAuMzIgQyAzNzMuODggODI2LjUyIDM3NS4wMiA4MjMuMzQgMzc3LjMgODIwLjggQyAzNzkuNjggODE4LjE4IDM4Mi43NSA4MTYuODggMzg2LjUgODE2Ljg4IEMgMzkwLjMzIDgxNi44OCAzOTMuNDEgODE4LjE1IDM5NS43IDgyMC43MSBDIDM5OCA4MjMuMjUgMzk5LjE3IDgyNi40NiAzOTkuMTcgODMwLjMyIE0gMzU3LjcgODE3LjE0IEwgMzYxLjMyIDgwNy4wNCBDIDM1OS42NiA4MDYuMjQgMzU4LjA5IDgwNS44NCAzNTYuNTkgODA1Ljg0IEMgMzUxLjk4IDgwNS44NCAzNDguNTggODA4LjIgMzQ2LjM5IDgxMi45IEwgMzQ2LjM5IDgwNy4wNCBMIDMzNi4zNSA4MDcuMDQgTCAzMzYuMzUgODUzLjU5IEwgMzQ3Ljk3IDg1My41OSBMIDM0Ny45NyA4MzQuNzggTCAzNDcuOTMgODMyLjUyIEMgMzQ3LjggODI2LjIyIDM0OC40NCA4MjEuODcgMzQ5LjgxIDgxOS40NSBDIDM1MS4wMyA4MTcuMjIgMzUyLjUyIDgxNi4xMSAzNTQuMzIgODE2LjExIEMgMzU1LjIgODE2LjExIDM1Ni4zMyA4MTYuNDUgMzU3LjcgODE3LjE0IE0gMzI0LjM2IDg2NC4yOSBDIDMyNy41MyA4NjAuNTQgMzI5LjExIDg1NC43NiAzMjkuMTEgODQ2LjkxIEwgMzI5LjExIDgwNy4wNCBMIDMxNy40MyA4MDcuMDQgTCAzMTcuNDMgODEyLjE4IEMgMzEyLjk1IDgwNy45NSAzMDguMDQgODA1Ljg0IDMwMi42OCA4MDUuODQgQyAyOTYuOTcgODA1Ljg0IDI5Mi4wMyA4MDcuODcgMjg3Ljg5IDgxMS45MiBDIDI4My4zNSA4MTYuNCAyODEuMDYgODIyLjMzIDI4MS4wNiA4MjkuNzIgQyAyODEuMDYgODM2LjM2IDI4My4xMSA4NDEuOTYgMjg3LjE4IDg0Ni41IEMgMjkxLjM3IDg1MS4yMiAyOTYuNzggODUzLjU5IDMwMy4zMiA4NTMuNTkgQyAzMDguODcgODUzLjU5IDMxMy41NyA4NTEuNjcgMzE3LjQzIDg0Ny44MSBDIDMxNy40MyA4NTEuNTkgMzE3LjA1IDg1NC4yNiAzMTYuMjggODU1LjggQyAzMTQuNDcgODU5LjI5IDMxMC41OSA4NjEuMDMgMzA0LjYyIDg2MS4wMyBDIDI5OS43NiA4NjEuMDMgMjk2LjE3IDg1OS42OSAyOTMuODUgODU3LjAyIEwgMjgxLjAyIDg1Ny4wMiBDIDI4Mi4wNCA4NjAuMTggMjgzLjYyIDg2Mi44NiAyODUuNzkgODY1LjA5IEMgMjkwLjExIDg2OS41NyAyOTYuNTYgODcxLjgxIDMwNS4xNCA4NzEuODEgQyAzMTMuNjcgODcxLjgxIDMyMC4wNyA4NjkuMzEgMzI0LjM2IDg2NC4yOSBNIDMxOC4wMiA4MjkuODQgQyAzMTguMDIgODMzLjY0IDMxNi45IDgzNi43NyAzMTQuNjUgODM5LjIgQyAzMTIuMzQgODQxLjcxIDMwOS4zMyA4NDIuOTggMzA1LjU3IDg0Mi45OCBDIDMwMS44IDg0Mi45OCAyOTguNyA4NDEuNzMgMjk2LjMxIDgzOS4yMyBDIDI5My45IDgzNi43MiAyOTIuNjkgODMzLjU3IDI5Mi42OSA4MjkuNzYgQyAyOTIuNjkgODI2LjA0IDI5My44OSA4MjIuOTUgMjk2LjI3IDgyMC40OCBDIDI5OC42MiA4MTguMDIgMzAxLjY2IDgxNi43OSAzMDUuMzYgODE2Ljc5IEMgMzA5LjE4IDgxNi43OSAzMTIuMjIgODE4LjAyIDMxNC41NyA4MjAuNDYgQyAzMTYuODYgODIyLjkxIDMxOC4wMiA4MjYuMDQgMzE4LjAyIDgyOS44NCBNIDI2Ni40MyA4NTMuNTkgTCAyNzguODQgODUzLjU5IEwgMjU0LjY1IDc5MC42NiBMIDI0Mi41IDc5MC42NiBMIDIxOC4yOCA4NTMuNTkgTCAyMzAuNjggODUzLjU5IEwgMjM1LjgxIDg0MC42NCBMIDI2MS41MiA4NDAuNjQgWiBNIDI1NyA4MjguOTggTCAyNDAuMjYgODI4Ljk4IEwgMjQ4LjY2IDgwNy4zIFogTSA2OTMuNTIgODA3LjA0IEwgNjgxLjc2IDgwNy4wNCBMIDY4MS43NiA4NTMuNTkgTCA2OTMuNTIgODUzLjU5IFogTSA2OTMuNTIgODA3LjA0ICIvPjwvZz4gPC9zdmc+";
+document.getElementById("marca-login").src = MARCA_HORIZONTAL;
+document.getElementById("marca-topo").src  = MARCA_HORIZONTAL;
+
+/* =====================================================================
+   CONTROLE DE ACESSO POR SENHA
+   ---------------------------------------------------------------------
+   A senha NÃO é gravada no arquivo: guarda-se apenas o resumo SHA-256.
+   Senha padrão de fábrica: sakuma2026
+   Para fixar outra senha definitiva em todas as cópias deste arquivo,
+   use o botão "Trocar senha", copie o código exibido e substitua o valor
+   da constante HASH_PADRAO abaixo.
+   OBSERVAÇÃO: esta proteção impede o acesso casual ao conteúdo, mas não
+   é criptografia — quem abrir o código-fonte do arquivo consegue burlá-la.
+   ===================================================================== */
+const USUARIOS = [
+  {id:"lais",      nome:"Lais",      hash:"44d40ee2b37c77c77eb9c1d27967a9036f8a73a34ff7e5057cc9eccf1ec7158f"}, // lais2026
+  {id:"vinicius",  nome:"Vinicius",  hash:"27dcf839b70531278f4b4cffebdc0d3ff92e6b0ff385206dd014d10aefc3f407"}, // vinicius2026
+  {id:"guilherme", nome:"Guilherme", hash:"91820a504d545cbe1abae0df282f040ebf3662d0719977fb46450024623d5d9f"}, // guilherme2026
+  {id:"matheus",   nome:"Matheus",   hash:"0673266d9795be67c617e7f1ed0a98b90f2265153f3f0727c07f85548e39a3f5"}, // matheus2026
+  {id:"fabio",     nome:"Fabio",     hash:"693884a6a9ce6e7b384f0e48256f09ec09a499778e584e25a60bb77fec1cdd89"}  // fabio2026
+];
+/* Para incluir outra pessoa, acrescente uma linha acima com id, nome e o hash da senha.
+   O hash é gerado pelo próprio sistema: entre com um usuário existente, use "Trocar senha"
+   e copie o código exibido ao final. */
+const SAL = "SAKUMA::";
+const CHAVE_SENHAS = "sakuma_manutencao_senhas";
+const CHAVE_SESSAO = "sakuma_manutencao_usuario";
+let USUARIO = null;          // usuário logado nesta sessão
+let idSelecionado = null;
+
+function sha256(str){
+  function rr(v,a){return (v>>>a)|(v<<(32-a));}
+  const enc=new TextEncoder().encode(str);
+  let asc=""; for(const b of enc) asc+=String.fromCharCode(b);
+  const mp=Math.pow, mw=mp(2,32); let i,j,result="";
+  const words=[]; const bitLen=asc.length*8;
+  let hash=sha256.h=sha256.h||[]; const k=sha256.k=sha256.k||[];
+  let pc=k.length; const comp={};
+  for(let c=2; pc<64; c++){
+    if(!comp[c]){
+      for(i=0;i<313;i+=c) comp[i]=c;
+      hash[pc]=(mp(c,.5)*mw)|0; k[pc++]=(mp(c,1/3)*mw)|0;
+    }
+  }
+  asc+="\x80"; while(asc.length%64-56) asc+="\x00";
+  for(i=0;i<asc.length;i++){ j=asc.charCodeAt(i); words[i>>2]|=j<<((3-i)%4)*8; }
+  words[words.length]=((bitLen/mw)|0); words[words.length]=bitLen;
+  for(j=0;j<words.length;){
+    const w=words.slice(j,j+=16), old=hash;
+    hash=hash.slice(0,8);
+    for(i=0;i<64;i++){
+      const w15=w[i-15], w2=w[i-2], a=hash[0], e=hash[4];
+      const t1=hash[7]+(rr(e,6)^rr(e,11)^rr(e,25))+((e&hash[5])^((~e)&hash[6]))+k[i]
+        +(w[i]=(i<16)?w[i]:(w[i-16]+(rr(w15,7)^rr(w15,18)^(w15>>>3))+w[i-7]+(rr(w2,17)^rr(w2,19)^(w2>>>10)))|0);
+      const t2=(rr(a,2)^rr(a,13)^rr(a,22))+((a&hash[1])^(a&hash[2])^(hash[1]&hash[2]));
+      hash=[(t1+t2)|0].concat(hash); hash[4]=(hash[4]+t1)|0;
+    }
+    for(i=0;i<8;i++) hash[i]=(hash[i]+old[i])|0;
+  }
+  for(i=0;i<8;i++) for(j=3;j+1;j--){ const b=(hash[i]>>(j*8))&255; result+=((b<16)?0:"")+b.toString(16); }
+  return result;
+}
+function senhasSalvas(){
+  try{ return JSON.parse(localStorage.getItem(CHAVE_SENHAS)||"{}"); }catch(e){ return {}; }
+}
+function hashDe(id){
+  const s=senhasSalvas(), u=USUARIOS.find(x=>x.id===id);
+  return s[id] || (u?u.hash:"");
+}
+function montarUsuarios(){
+  const sel=document.getElementById("usuario");
+  sel.innerHTML='<option value="">— selecione seu nome —</option>'
+    + USUARIOS.map(u=>`<option value="${esc(u.id)}">${esc(u.nome)}</option>`).join("");
+  sel.addEventListener("change",()=>selecionarUsuario(sel.value));
+}
+function selecionarUsuario(id){
+  idSelecionado=id||null;
+  const sel=document.getElementById("usuario");
+  if(sel.value!==(id||"")) sel.value=id||"";
+  document.getElementById("erro-senha").textContent="";
+  if(idSelecionado) document.getElementById("senha").focus();
+}
+function entrar(){
+  const campo=document.getElementById("senha"), erro=document.getElementById("erro-senha");
+  idSelecionado=document.getElementById("usuario").value||null;
+  if(!idSelecionado){ erro.textContent="Selecione o seu nome na lista."; document.getElementById("usuario").focus(); return; }
+  const v=campo.value;
+  if(!v){ erro.textContent="Informe a senha."; campo.focus(); return; }
+  if(sha256(SAL+v)!==hashDe(idSelecionado)){
+    erro.textContent="Senha incorreta."; campo.value=""; campo.focus(); return;
+  }
+  erro.textContent=""; campo.value="";
+  abrirSessao(idSelecionado);
+  try{ sessionStorage.setItem(CHAVE_SESSAO,idSelecionado); }catch(e){}
+}
+function abrirSessao(id){
+  USUARIO=USUARIOS.find(u=>u.id===id) || null;
+  if(!USUARIO) return;
+  const chip=document.getElementById("chip-usuario");
+  chip.innerHTML=`<span class="ini">${esc(USUARIO.nome[0])}</span>${esc(USUARIO.nome)}`;
+  document.body.classList.add("liberado");
+  // preenche o responsável do checklist com quem está logado, se ainda estiver vazio
+  if(typeof DB!=="undefined" && DB && DB.rascunho && !DB.rascunho.resp){
+    DB.rascunho.resp=USUARIO.nome;
+    const c=document.getElementById("chk-resp"); if(c) c.value=USUARIO.nome;
+    salvar();
+  }
+}
+function sair(){
+  try{ sessionStorage.removeItem(CHAVE_SESSAO); }catch(e){}
+  USUARIO=null; idSelecionado=null;
+  document.getElementById("usuario").value="";
+  document.body.classList.remove("liberado");
+  const c=document.getElementById("senha"); c.value="";
+  document.getElementById("usuario").focus();
+}
+function trocarSenha(){
+  if(!USUARIO) return;
+  const atual=prompt(`Senha atual de ${USUARIO.nome}:`); if(atual===null) return;
+  if(sha256(SAL+atual)!==hashDe(USUARIO.id)){ toast("Senha atual incorreta."); return; }
+  const nova=prompt("Nova senha (mínimo 4 caracteres):"); if(nova===null) return;
+  if(nova.length<4){ toast("A nova senha deve ter pelo menos 4 caracteres."); return; }
+  if(prompt("Confirme a nova senha:")!==nova){ toast("A confirmação não confere."); return; }
+  const novoHash=sha256(SAL+nova);
+  try{ const s=senhasSalvas(); s[USUARIO.id]=novoHash; localStorage.setItem(CHAVE_SENHAS,JSON.stringify(s)); }catch(e){}
+  prompt(`Senha de ${USUARIO.nome} alterada neste navegador/aparelho.\n\nPara que ela valha em TODOS os aparelhos, `
+    +`abra o arquivo em um editor de texto e substitua o hash do usuário "${USUARIO.id}" na lista USUARIOS pelo código abaixo:`, novoHash);
+  toast("Senha alterada.");
+}
+document.getElementById("senha").addEventListener("keydown",e=>{ if(e.key==="Enter") entrar(); });
+document.getElementById("usuario").addEventListener("keydown",e=>{ if(e.key==="Enter") entrar(); });
+
+/* =====================================================================
+   DADOS-BASE — fiéis à planilha Checklist_Manutencao_Implementos_Agricolas
+   ===================================================================== */
+const LISTAS = {
+  tiposEq:["Máquina","Implemento"],
+  categorias:["Tração","Plantio","Pulverização","Preparo de Solo","Colheita","Transporte","Irrigação","Terraplanagem","Outros"],
+  statusImp:["Ativo","Inativo"],
+  grupos:["Estrutura","Hidráulico","Rolamentos","Pneus","Lubrificação","Elétrica","Segurança","Motor","Transmissão","Outros"],
+  tipos:["Visual","Medição","Funcionamento","Aperto","Lubrificação"],
+  periodos:["Diário","Semanal","Mensal","Safra"],
+  simnao:["Sim","Não"],
+  situacoes:["Aprovado","Reprovado"],
+  prioridades:["Baixa","Média","Alta","Crítica"],
+  statusAnom:["Aberta","Em andamento","Concluída"]
+};
+
+const SEED = {
+  implementos:[
+    {codigo:"MAQ-001",tipoEq:"Máquina",nome:"Trator 4x4",categoria:"Tração",marca:"John Deere",modelo:"6110J",patrimonio:"PAT-2150",ano:2018,status:"Ativo"},
+    {codigo:"MAQ-002",tipoEq:"Máquina",nome:"Pulverizador Autopropelido",categoria:"Pulverização",marca:"Jacto",modelo:"Uniport 3030",patrimonio:"PAT-2311",ano:2021,status:"Ativo"},
+    {codigo:"MAQ-003",tipoEq:"Máquina",nome:"Colhedora de Grãos",categoria:"Colheita",marca:"Case IH",modelo:"Axial-Flow 8250",patrimonio:"PAT-2044",ano:2020,status:"Ativo"},
+    {codigo:"IMP-001",tipoEq:"Implemento",nome:"Plantadeira 9 Linhas",categoria:"Plantio",marca:"John Deere",modelo:"1990",patrimonio:"PAT-2201",ano:2019,status:"Ativo"},
+    {codigo:"IMP-002",tipoEq:"Implemento",nome:"Grade Aradora",categoria:"Preparo de Solo",marca:"Baldan",modelo:"GACR",patrimonio:"PAT-1987",ano:2016,status:"Ativo"},
+    {codigo:"IMP-003",tipoEq:"Implemento",nome:"Carreta Graneleira",categoria:"Transporte",marca:"Randon",modelo:"Bitrem",patrimonio:"PAT-1899",ano:2015,status:"Inativo"}
+  ],
+  itens:[
+    {implemento:"Plantadeira 9 Linhas",grupo:"Estrutura",item:"Verificar trincas no chassi",tipo:"Visual",periodicidade:"Diário",obrigatorio:"Sim",ordem:1},
+    {implemento:"Plantadeira 9 Linhas",grupo:"Pneus",item:"Verificar pressão dos pneus",tipo:"Medição",periodicidade:"Diário",obrigatorio:"Sim",ordem:2},
+    {implemento:"Plantadeira 9 Linhas",grupo:"Lubrificação",item:"Lubrificar pontos de graxa",tipo:"Lubrificação",periodicidade:"Semanal",obrigatorio:"Sim",ordem:3},
+    {implemento:"Plantadeira 9 Linhas",grupo:"Hidráulico",item:"Verificar vazamentos nas mangueiras",tipo:"Visual",periodicidade:"Diário",obrigatorio:"Sim",ordem:4},
+    {implemento:"Pulverizador Autopropelido",grupo:"Hidráulico",item:"Testar bicos de pulverização",tipo:"Funcionamento",periodicidade:"Diário",obrigatorio:"Sim",ordem:1},
+    {implemento:"Pulverizador Autopropelido",grupo:"Elétrica",item:"Verificar painel de comando",tipo:"Funcionamento",periodicidade:"Diário",obrigatorio:"Sim",ordem:2},
+    {implemento:"Pulverizador Autopropelido",grupo:"Segurança",item:"Verificar cinto e extintor",tipo:"Visual",periodicidade:"Semanal",obrigatorio:"Sim",ordem:3},
+    {implemento:"Colhedora de Grãos",grupo:"Rolamentos",item:"Verificar folga dos rolamentos",tipo:"Medição",periodicidade:"Safra",obrigatorio:"Sim",ordem:1},
+    {implemento:"Colhedora de Grãos",grupo:"Segurança",item:"Testar sistema de freios",tipo:"Funcionamento",periodicidade:"Diário",obrigatorio:"Sim",ordem:2},
+    {implemento:"Trator 4x4",grupo:"Motor",item:"Verificar nível do óleo do motor",tipo:"Medição",periodicidade:"Diário",obrigatorio:"Sim",ordem:1},
+    {implemento:"Trator 4x4",grupo:"Motor",item:"Verificar nível da água do radiador",tipo:"Medição",periodicidade:"Diário",obrigatorio:"Sim",ordem:2},
+    {implemento:"Trator 4x4",grupo:"Hidráulico",item:"Verificar nível do óleo hidráulico",tipo:"Medição",periodicidade:"Diário",obrigatorio:"Sim",ordem:3},
+    {implemento:"Trator 4x4",grupo:"Transmissão",item:"Verificar vazamentos na transmissão",tipo:"Visual",periodicidade:"Semanal",obrigatorio:"Sim",ordem:4},
+    {implemento:"Trator 4x4",grupo:"Pneus",item:"Verificar pressão e desgaste dos pneus",tipo:"Medição",periodicidade:"Semanal",obrigatorio:"Sim",ordem:5},
+    {implemento:"Trator 4x4",grupo:"Elétrica",item:"Testar faróis, setas e alarme de ré",tipo:"Funcionamento",periodicidade:"Diário",obrigatorio:"Sim",ordem:6},
+    {implemento:"Trator 4x4",grupo:"Segurança",item:"Verificar cinto, extintor e estrutura de proteção",tipo:"Visual",periodicidade:"Semanal",obrigatorio:"Sim",ordem:7}
+  ],
+  inspecoes:[
+    {data:"2026-07-15",implemento:"Plantadeira 9 Linhas",horimetro:1450.5,mecanico:"Carlos Souza",responsavel:"Guilherme",usuario:"Guilherme",situacao:"Aprovado",obs:"Nenhuma anomalia encontrada."}
+  ],
+  anomalias:[
+    {data:"2026-07-10",implemento:"Colhedora de Grãos",item:"Rolamento do cilindro",descricao:"Folga excessiva identificada na inspeção mensal",prioridade:"Alta",servico:"Substituição do rolamento",pecas:"Rolamento 6205-2RS",responsavel:"Carlos Souza",usuario:"Guilherme",status:"Em andamento",conclusao:""}
+  ]
+};
+
+/* ===================== Armazenamento (com fallback) ===================== */
+const CHAVE = "sakuma_manutencao_implementos_v1";
+/* ================================================================
+   CAMADA DE ARMAZENAMENTO — localStorage + Firebase Firestore
+   ================================================================
+   Fluxo:
+   1. Ao iniciar, lê do localStorage (instantâneo, funciona offline).
+   2. Se o Firebase estiver configurado, escuta mudanças em tempo real
+      e replica para todos os aparelhos conectados.
+   3. Ao salvar, grava no localStorage IMEDIATAMENTE (sem esperar rede)
+      e enfileira a gravação no Firestore. Se não houver rede, o
+      Firestore SDK guarda a operação e envia quando reconectar.
+   4. Qualquer aparelho com o app aberto recebe a atualização em ≤ 2s.
+   ================================================================ */
+
+const CHAVE_FB = 'sakuma_firebase_cfg';
+let _db = null;          // instância do Firestore
+let _fbOk = false;       // Firebase inicializado com sucesso
+let _unsubscribe = null; // cancelar listener ao trocar config
+let _salvandoRemoto = false; // evitar loop onSnapshot → salvar → onSnapshot
+
+/* localStorage como cache local */
+const armazem = {
+  mem:null, persistente:true,
+  ler(){ try{ return localStorage.getItem(CHAVE); }catch(e){ this.persistente=false; return this.mem; } },
+  gravar(v){ try{ localStorage.setItem(CHAVE,v); }catch(e){ this.persistente=false; this.mem=v; } }
+};
+
+/* ── Configuração do Firebase ── */
+function lerCfgFirebase(){
+  try{ return JSON.parse(localStorage.getItem(CHAVE_FB)||'null'); }catch(e){ return null; }
+}
+function gravarCfgFirebase(cfg){
+  try{ localStorage.setItem(CHAVE_FB, JSON.stringify(cfg)); }catch(e){}
+}
+
+function iniciarFirebase(cfg){
+  if(!cfg || !cfg.apiKey || !cfg.projectId){ setSyncBar('sem-config'); return; }
+  // evitar dupla inicialização
+  try{
+    if(window.firebase && firebase.apps && firebase.apps.length){
+      firebase.app(); // já existe
+    } else {
+      firebase.initializeApp(cfg);
+    }
+    _db = firebase.firestore();
+    // habilitar persistência offline (Firestore armazena operações pendentes)
+    _db.enablePersistence({synchronizeTabs:true}).catch(()=>{});
+    conectarFirestore();
+  } catch(e){
+    setSyncBar('erro','Erro ao conectar: '+e.message);
+  }
+}
+
+const DOC_DADOS = () => _db && _db.collection('sakuma').doc('manutencao');
+
+function conectarFirestore(){
+  if(_unsubscribe) _unsubscribe();
+  setSyncBar('conectando');
+  const ref = DOC_DADOS();
+  if(!ref) return;
+  _unsubscribe = ref.onSnapshot(snap=>{
+    _fbOk = true;
+    if(snap.exists){
+      if(_salvandoRemoto) return; // mudança originada por nós mesmos
+      const remoto = snap.data();
+      if(remoto && remoto._ts > (DB._ts||0)){
+        // dado remoto é mais novo → atualizar local
+        const mant = DB.rascunho; // preservar rascunho local
+        DB = Object.assign({}, remoto);
+        DB.rascunho = mant;
+        armazem.gravar(JSON.stringify(DB));
+        renderTudo();
+        setSyncBar('ok');
+        toast('Dados atualizados por outro usuário.');
+      } else {
+        setSyncBar('ok');
+      }
+    } else {
+      // documento ainda não existe → enviar dados locais
+      enviarFirestore();
+    }
+  }, err=>{
+    setSyncBar('erro', 'Falha na conexão: '+err.message);
+  });
+}
+
+function enviarFirestore(){
+  if(!_db || !DOC_DADOS()) return;
+  const payload = clonar(DB);
+  payload._ts = Date.now();
+  payload.rascunho = undefined; // rascunho é sempre local
+  delete payload.rascunho;
+  _salvandoRemoto = true;
+  DOC_DADOS().set(payload).then(()=>{
+    DB._ts = payload._ts;
+    setSyncBar('ok');
+  }).catch(e=>{
+    setSyncBar('pendente','Salvando quando houver conexão…');
+  }).finally(()=>{ setTimeout(()=>{ _salvandoRemoto=false; },500); });
+}
+
+/* ── Barra de status ── */
+function setSyncBar(estado, msg){
+  const bar=document.getElementById('sync-bar');
+  const txt=document.getElementById('sync-txt');
+  if(!bar) return;
+  bar.style.display='flex';
+  bar.className = '';
+  if(estado==='ok'){        txt.textContent='Banco sincronizado · '+new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'}); }
+  else if(estado==='pendente'){ bar.className='pendente'; txt.textContent=msg||'Aguardando conexão para sincronizar…'; }
+  else if(estado==='erro'){     bar.className='erro';     txt.textContent=msg||'Erro ao sincronizar — dados salvos localmente.'; }
+  else if(estado==='conectando'){txt.textContent='Conectando ao Firebase…'; }
+  else if(estado==='sem-config'){txt.textContent='Banco não configurado — dados salvos só neste aparelho. Clique em ⚙ Banco para configurar.'; bar.className='pendente'; }
+}
+
+/* ── Modal de configuração do Firebase ── */
+function abrirConfigFirebase(){
+  const cfg = lerCfgFirebase() || {};
+  const campos = [
+    ['apiKey',       'API Key',              cfg.apiKey||''],
+    ['authDomain',   'Auth Domain',          cfg.authDomain||''],
+    ['projectId',    'Project ID',           cfg.projectId||''],
+    ['storageBucket','Storage Bucket',       cfg.storageBucket||''],
+    ['messagingSenderId','Messaging Sender ID', cfg.messagingSenderId||''],
+    ['appId',        'App ID',               cfg.appId||''],
+  ];
+  const html = '<div style="font-size:12.5px;color:var(--sec);margin-bottom:14px">Cole aqui as credenciais do seu projeto Firebase (Console → Configurações do projeto → Seus apps → SDK).</div>'
+    + campos.map(([k,l,v])=>`<div class="campo largo"><label class="rotulo" for="fb_${k}">${l}</label><input id="fb_${k}" value="${esc(v)}" placeholder="${l}"></div>`).join('');
+  abrirModal('Configuração do Firebase', [], {}, ()=>{});
+  document.getElementById('m-tit').textContent='⚙ Configuração do Firebase';
+  document.getElementById('m-corpo').innerHTML=html;
+  document.getElementById('m-corpo').style.gridTemplateColumns='1fr';
+  modalSalvar = ()=>{
+    const novo={};
+    campos.forEach(([k])=>{ novo[k]=document.getElementById('fb_'+k).value.trim(); });
+    if(!novo.apiKey||!novo.projectId){ toast('Preencha ao menos API Key e Project ID.'); return; }
+    gravarCfgFirebase(novo);
+    fecharModal();
+    // reinicializar Firebase com a nova config
+    if(_unsubscribe){ _unsubscribe(); _unsubscribe=null; }
+    try{ firebase.app().delete().then(()=>{ _db=null; iniciarFirebase(novo); }); }
+    catch(e){ iniciarFirebase(novo); }
+    toast('Configuração salva. Conectando…');
+  };
+}
+
+
+/* ===================== Utilidades ===================== */
+const $ = s => document.querySelector(s);
+const uid = () => (crypto.randomUUID ? crypto.randomUUID() : "id-"+Date.now()+"-"+Math.random().toString(36).slice(2,9));
+const esc = v => String(v==null?"":v).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;").replace(/'/g,"&#39;");
+const hoje = () => new Date().toISOString().slice(0,10);
+function fmtData(iso){ if(!iso) return ""; const [a,m,d]=String(iso).split("-"); return (d&&m&&a)?`${d}/${m}/${a}`:esc(iso); }
+function fmtNum(v){ if(v===""||v==null||isNaN(Number(v))) return esc(v??""); return Number(v).toLocaleString("pt-BR",{maximumFractionDigits:1}); }
+function toast(msg){ const t=$("#toast"); t.textContent=msg; t.classList.add("mostra"); clearTimeout(t._tm); t._tm=setTimeout(()=>t.classList.remove("mostra"),3200); }
+function clonar(o){ return JSON.parse(JSON.stringify(o)); }
+
+/* ===================== Estado ===================== */
+let DB;
+function seedNovo(){
+  const d = clonar(SEED);
+  ["implementos","itens","inspecoes","anomalias"].forEach(k=>d[k].forEach(r=>r.id=uid()));
+  d.rascunho = {implemento:"",data:hoje(),horimetro:"",resp:"",mec:"",marcas:{}};
+  return d;
+}
+function carregar(){
+  const bruto = armazem.ler();
+  if(bruto){ try{ const d=JSON.parse(bruto); if(d && Array.isArray(d.implementos)) return d; }catch(e){} }
+  return seedNovo();
+}
+function salvar(){
+  armazem.gravar(JSON.stringify(DB));
+  if(_fbOk) enviarFirestore();
+}
+
+/* ===================== Navegação por abas ===================== */
+document.querySelectorAll(".aba").forEach(b=>b.addEventListener("click",()=>{
+  document.querySelectorAll(".aba").forEach(x=>x.classList.toggle("ativa",x===b));
+  document.querySelectorAll(".painel").forEach(p=>p.classList.toggle("ativa",p.id==="painel-"+b.dataset.aba));
+}));
+
+/* ===================== Modal genérico ===================== */
+let modalSalvar=null;
+function abrirModal(titulo,campos,valores,aoSalvar){
+  $("#m-tit").textContent=titulo;
+  $("#m-corpo").innerHTML=campos.map(c=>{
+    const v = valores[c.n] ?? c.padrao ?? "";
+    let inp;
+    if(c.tipo==="select") inp=`<select id="f-${c.n}">${(c.ops||[]).map(o=>`<option ${o===v?"selected":""}>${esc(o)}</option>`).join("")}</select>`;
+    else if(c.tipo==="textarea") inp=`<textarea id="f-${c.n}">${esc(v)}</textarea>`;
+    else inp=`<input type="${c.tipo||"text"}" id="f-${c.n}" value="${esc(v)}" ${c.tipo==="number"?'step="any" min="0"':""}>`;
+    return `<div class="campo ${c.largo?"largo":""}"><label class="rotulo" for="f-${c.n}">${esc(c.label)}${c.req?" *":""}</label>${inp}</div>`;
+  }).join("");
+  modalSalvar=()=>{ 
+    const out={};
+    for(const c of campos){
+      out[c.n]=$("#f-"+c.n).value.trim();
+      if(c.req && !out[c.n]){ toast(`Preencha o campo "${c.label}".`); $("#f-"+c.n).focus(); return; }
+    }
+    aoSalvar(out);
+  };
+  $("#veu").classList.add("aberto");
+  const primeiro=$("#m-corpo").querySelector("input,select,textarea"); if(primeiro) primeiro.focus();
+}
+function fecharModal(){ $("#veu").classList.remove("aberto"); modalSalvar=null; }
+$("#m-salvar").addEventListener("click",()=>modalSalvar&&modalSalvar());
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") fecharModal(); });
+
+/* ===================== ABA 1 — Implementos ===================== */
+function prefixoDe(tipoEq){ return tipoEq==="Máquina" ? "MAQ" : "IMP"; }
+function proxCodigo(tipoEq){
+  const pre=prefixoDe(tipoEq||"Implemento");
+  let max=0;
+  DB.implementos.forEach(i=>{
+    const c=String(i.codigo||"");
+    if(c.indexOf(pre)!==0) return;
+    const m=c.match(/(\d+)\s*$/); if(m) max=Math.max(max,parseInt(m[1],10));
+  });
+  return pre+"-"+String(max+1).padStart(3,"0");
+}
+const camposImp = [
+  {n:"tipoEq",label:"Tipo",tipo:"select",ops:LISTAS.tiposEq},
+  {n:"codigo",label:"Código",req:1},
+  {n:"nome",label:"Nome do Equipamento",req:1,largo:1},
+  {n:"categoria",label:"Categoria",tipo:"select",ops:LISTAS.categorias},
+  {n:"marca",label:"Marca"},{n:"modelo",label:"Modelo"},{n:"patrimonio",label:"Patrimônio"},
+  {n:"ano",label:"Ano",tipo:"number"},{n:"status",label:"Status",tipo:"select",ops:LISTAS.statusImp}
+];
+function novoImplemento(){
+  abrirModal("Nova máquina ou implemento",camposImp,{tipoEq:"Implemento",codigo:proxCodigo("Implemento"),categoria:"Outros",status:"Ativo",ano:new Date().getFullYear()},v=>{
+    if(DB.implementos.some(i=>i.codigo.toLowerCase()===v.codigo.toLowerCase())) return toast("Já existe um implemento com esse código.");
+    if(DB.implementos.some(i=>i.nome.toLowerCase()===v.nome.toLowerCase())) return toast("Já existe um implemento com esse nome.");
+    DB.implementos.push({id:uid(),...v});
+    salvar(); renderTudo(); fecharModal(); toast(v.tipoEq==="Máquina"?"Máquina cadastrada.":"Implemento cadastrado.");
+  });
+  // ao trocar o tipo, sugere o próximo código da série correspondente
+  $("#f-tipoEq").addEventListener("change",e=>{ $("#f-codigo").value=proxCodigo(e.target.value); });
+}
+function editarImplemento(id){
+  const imp=DB.implementos.find(i=>i.id===id); if(!imp) return;
+  abrirModal("Editar máquina ou implemento",camposImp,imp,v=>{
+    if(DB.implementos.some(i=>i.id!==id&&i.codigo.toLowerCase()===v.codigo.toLowerCase())) return toast("Já existe um implemento com esse código.");
+    if(DB.implementos.some(i=>i.id!==id&&i.nome.toLowerCase()===v.nome.toLowerCase())) return toast("Já existe um implemento com esse nome.");
+    const nomeAntigo=imp.nome; Object.assign(imp,v);
+    if(nomeAntigo!==v.nome){ // cascata: renomeia vínculos em todas as abas
+      DB.itens.forEach(r=>{ if(r.implemento===nomeAntigo) r.implemento=v.nome; });
+      DB.inspecoes.forEach(r=>{ if(r.implemento===nomeAntigo) r.implemento=v.nome; });
+      DB.anomalias.forEach(r=>{ if(r.implemento===nomeAntigo) r.implemento=v.nome; });
+      if(DB.rascunho.implemento===nomeAntigo) DB.rascunho.implemento=v.nome;
+    }
+    salvar(); renderTudo(); fecharModal(); toast("Cadastro atualizado.");
+  });
+}
+function excluirImplemento(id){
+  const imp=DB.implementos.find(i=>i.id===id); if(!imp) return;
+  const nItens=DB.itens.filter(t=>t.implemento===imp.nome).length;
+  if(!confirm(`Excluir "${imp.nome}"?\n${nItens} item(ns) de manutenção vinculados também serão removidos.\nRegistros históricos de inspeções e anomalias serão mantidos.`)) return;
+  DB.implementos=DB.implementos.filter(i=>i.id!==id);
+  DB.itens=DB.itens.filter(t=>t.implemento!==imp.nome);
+  if(DB.rascunho.implemento===imp.nome){ DB.rascunho.implemento=""; DB.rascunho.marcas={}; }
+  salvar(); renderTudo(); toast("Cadastro excluído.");
+}
+function renderImplementos(){
+  const tb=$("#tab-implementos tbody");
+  const fTipo=($("#filtro-tipo-eq")||{}).value||"";
+  const lista=DB.implementos.filter(i=>!fTipo||(i.tipoEq||"Implemento")===fTipo);
+  tb.innerHTML = lista.length ? lista.map(i=>`<tr>
+    <td><b>${esc(i.codigo)}</b></td>
+    <td><span class="selo ${(i.tipoEq||"Implemento")==="Máquina"?"maquina":"implemento"}">${esc(i.tipoEq||"Implemento")}</span></td>
+    <td>${esc(i.nome)}</td><td>${esc(i.categoria)}</td>
+    <td>${esc(i.marca)}</td><td>${esc(i.modelo)}</td><td>${esc(i.patrimonio)}</td><td>${esc(i.ano)}</td>
+    <td><span class="selo ${i.status==="Ativo"?"ativo":"inativo"}">${esc(i.status)}</span></td>
+    <td class="acoes"><button class="btn mini cinza" onclick="editarImplemento('${i.id}')">Editar</button>
+    <button class="btn mini perigo" onclick="excluirImplemento('${i.id}')">Excluir</button></td>
+  </tr>`).join("") : `<tr><td colspan="10" class="vazio">Nenhum registro${fTipo?" deste tipo":""}. Clique em “+ Novo equipamento”.</td></tr>`;
+}
+
+/* ===================== ABA 2 — Itens de manutenção ===================== */
+function itensDe(nomeImp){
+  return DB.itens.map((t,seq)=>({t,seq})).filter(x=>x.t.implemento===nomeImp)
+    .sort((a,b)=> (a.t.ordem-b.t.ordem) || (a.seq-b.seq)).map(x=>x.t);
+}
+function proxOrdem(nomeImp){ const l=itensDe(nomeImp); return l.length? Math.max(...l.map(t=>Number(t.ordem)||0))+1 : 1; }
+function camposItem(){
+  return [
+    {n:"implemento",label:"Equipamento",tipo:"select",ops:DB.implementos.map(i=>i.nome),req:1,largo:1},
+    {n:"grupo",label:"Grupo da Inspeção",tipo:"select",ops:LISTAS.grupos},
+    {n:"tipo",label:"Tipo de Verificação",tipo:"select",ops:LISTAS.tipos},
+    {n:"item",label:"Item a Verificar",req:1,largo:1},
+    {n:"periodicidade",label:"Periodicidade",tipo:"select",ops:LISTAS.periodos},
+    {n:"obrigatorio",label:"Obrigatório",tipo:"select",ops:LISTAS.simnao},
+    {n:"ordem",label:"Ordem de Impressão",tipo:"number"}
+  ];
+}
+function novoItem(){
+  if(!DB.implementos.length) return toast("Cadastre uma máquina ou implemento primeiro (Aba 1).");
+  const filtro=$("#filtro-itens").value;
+  const impPadrao = filtro || DB.implementos[0].nome;
+  abrirModal("Novo item de manutenção",camposItem(),{implemento:impPadrao,grupo:"Estrutura",tipo:"Visual",periodicidade:"Diário",obrigatorio:"Sim",ordem:proxOrdem(impPadrao)},v=>{
+    v.ordem=Number(v.ordem)||proxOrdem(v.implemento);
+    DB.itens.push({id:uid(),...v});
+    salvar(); renderTudo(); fecharModal(); toast("Item adicionado ao checklist mestre.");
+  });
+  $("#f-implemento").addEventListener("change",e=>{ $("#f-ordem").value=proxOrdem(e.target.value); });
+}
+function editarItem(id){
+  const it=DB.itens.find(t=>t.id===id); if(!it) return;
+  abrirModal("Editar item de manutenção",camposItem(),it,v=>{
+    v.ordem=Number(v.ordem)||1; Object.assign(it,v);
+    salvar(); renderTudo(); fecharModal(); toast("Item atualizado.");
+  });
+}
+function excluirItem(id){
+  const it=DB.itens.find(t=>t.id===id); if(!it) return;
+  if(!confirm(`Excluir o item "${it.item}"?`)) return;
+  DB.itens=DB.itens.filter(t=>t.id!==id);
+  delete DB.rascunho.marcas[id];
+  salvar(); renderTudo(); toast("Item excluído.");
+}
+function moverItem(id,dir){
+  const it=DB.itens.find(t=>t.id===id); if(!it) return;
+  const lista=itensDe(it.implemento);
+  const i=lista.findIndex(t=>t.id===id), j=i+dir;
+  if(j<0||j>=lista.length) return;
+  [lista[i],lista[j]]=[lista[j],lista[i]];
+  lista.forEach((t,k)=>t.ordem=k+1); // renumera 1..n — mantém a sequência consistente
+  salvar(); renderTudo();
+}
+function renderItens(){
+  const filtro=$("#filtro-itens").value;
+  const nomes = filtro? [filtro] : DB.implementos.map(i=>i.nome);
+  let linhas="";
+  nomes.forEach(nome=>{
+    itensDe(nome).forEach(t=>{
+      linhas+=`<tr>
+        <td>${esc(t.implemento)}</td><td>${esc(t.grupo)}</td><td>${esc(t.item)}</td>
+        <td>${esc(t.tipo)}</td><td>${esc(t.periodicidade)}</td><td>${esc(t.obrigatorio)}</td>
+        <td style="text-align:center"><b>${esc(t.ordem)}</b></td>
+        <td class="acoes">
+          <button class="btn mini cinza" title="Subir" onclick="moverItem('${t.id}',-1)">▲</button>
+          <button class="btn mini cinza" title="Descer" onclick="moverItem('${t.id}',1)">▼</button>
+          <button class="btn mini cinza" onclick="editarItem('${t.id}')">Editar</button>
+          <button class="btn mini perigo" onclick="excluirItem('${t.id}')">Excluir</button>
+        </td></tr>`;
+    });
+  });
+  $("#tab-itens tbody").innerHTML = linhas || `<tr><td colspan="8" class="vazio">Nenhum item cadastrado${filtro?" para este equipamento":""}. Clique em “+ Novo item”.</td></tr>`;
+}
+
+/* ===================== ABA 3 — Checklist (folha A4) ===================== */
+const MIN_LINHAS=20; // linhas em branco garantidas para preenchimento à mão
+/* Abreviações usadas só na folha impressa, onde a coluna é estreita */
+const ABREV={"Funcionamento":"Funcionam.","Lubrificação":"Lubrific.","Preparo de Solo":"Preparo Solo"};
+function abrev(v){ return ABREV[v]||v; }
+function buscaImp(nome){ return DB.implementos.find(i=>i.nome===nome); }
+
+function buildFolha(nomeImp,opts){
+  const o=Object.assign({interativo:false,dados:{},marcas:{}},opts);
+  const imp=buscaImp(nomeImp);
+  const cat=imp?imp.categoria:"", mm=imp?`${imp.marca} / ${imp.modelo}`:"", st=imp?imp.status:"";
+  const tipoEq=imp?(imp.tipoEq||"Implemento"):"";
+  const d=o.dados;
+  const lista=nomeImp?itensDe(nomeImp):[];
+  const todasFotos=[];
+  lista.forEach(function(t){var fs=(o.fotos&&o.fotos[t.id])||[];fs.forEach(function(f){todasFotos.push(Object.assign({},f,{legenda:t.grupo+" · "+t.item}));});});
+  (o.fotosGerais||[]).forEach(function(f){todasFotos.push(Object.assign({},f,{legenda:f.nome||"Foto geral"}));});
+  const caixa=(itId,m)=>{
+    const marcado = itId && o.marcas[itId] && o.marcas[itId].m===m;
+    const clic = o.interativo && itId ? `data-clicavel onclick="marcar('${itId}','${m}')" role="button" tabindex="0" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();marcar('${itId}','${m}')}"` : "";
+    return `<div class="caixa" ${clic}>${marcado?"X":""}</div>`;
+  };
+  let linhas="";
+  const total=Math.max(MIN_LINHAS,lista.length);
+  for(let k=0;k<total;k++){
+    const t=lista[k];
+    if(t){
+      const obs=(o.marcas[t.id]&&o.marcas[t.id].obs)||"";
+      const fotosItem=(o.fotos&&o.fotos[t.id])||[];
+      const minisPrint=fotosItem.map(function(f){return '<img class="foto-mini" src="'+f.data+'">';}).join("");
+      const minisInt=fotosItem.map(function(f,fi){return '<img class="foto-mini" src="'+f.data+'" onclick="abrirFotoModal(\''+t.id+'\','+fi+')">';}).join("");
+      const inpId='finp_'+t.id;
+      const obsCel = o.interativo
+        ? '<div class="cel-obs"><input class="obs-in" value="'+esc(obs)+'" oninput="obsItem(\''+t.id+'\',this.value)">'
+          +'<input type="file" id="'+inpId+'" accept="image/*" multiple capture="environment" style="display:none" onchange="adicionarFotosItem(\''+t.id+'\',this)">'
+          +'<button class="btn-foto" onclick="document.getElementById(\''+inpId+'\').click()">&#128247; foto</button>'
+          +(fotosItem.length?'<div class="foto-mini-lista">'+minisInt+'</div>':'')
+          +'</div>'
+        : '<div><span style="font-size:8.5pt">'+esc(obs)+'</span>'+(fotosItem.length?'<div class="foto-mini-lista">'+minisPrint+'</div>':'')+'</div>';
+      linhas+=`<tr>
+        <td class="c-grupo">${esc(t.grupo)}</td><td class="c-item">${esc(t.item)}</td>
+        <td class="c-tipo">${esc(abrev(t.tipo))}</td><td class="c-per">${esc(t.periodicidade)}</td>
+        <td class="c-obr">${esc(t.obrigatorio)}</td>
+        <td class="c-marca">${caixa(t.id,"OK")}</td>
+        <td class="c-marca">${caixa(t.id,"REP")}</td>
+        <td class="c-marca">${caixa(t.id,"NA")}</td>
+        <td class="c-obs">${obsCel}</td></tr>`;
+    } else {
+      linhas+=`<tr><td class="c-grupo"></td><td class="c-item"></td><td class="c-tipo"></td><td class="c-per"></td><td class="c-obr"></td>
+        <td class="c-marca"><div class="caixa"></div></td><td class="c-marca"><div class="caixa"></div></td><td class="c-marca"><div class="caixa"></div></td><td class="c-obs"></td></tr>`;
+    }
+  }
+  return `
+  <div class="f-cab">
+    <img class="marca" src="${MARCA_HORIZONTAL}" alt="SAKUMA Agronegócios">
+    <div class="f-cab-txt">
+      <div class="f-titulo">CHECKLIST DE MANUTENÇÃO — MÁQUINAS E IMPLEMENTOS</div>
+      <div class="f-sub">Controle de Manutenção Preventiva</div>
+    </div>
+  </div>
+  <div class="f-regua"></div>
+  <table class="f-info">
+    <tr><td class="rot">Equipamento:</td><td class="val" colspan="3"><b>${esc(nomeImp)}</b></td>
+        <td class="rot">Tipo:</td><td class="val">${esc(tipoEq)}</td>
+        <td class="rot">Data:</td><td class="val">${fmtData(d.data)}</td></tr>
+    <tr><td class="rot">Categoria:</td><td class="val">${esc(cat)}</td>
+        <td class="rot">Marca / Modelo:</td><td class="val" colspan="3">${esc(imp?mm:"")}</td>
+        <td class="rot">Horímetro:</td><td class="val">${fmtNum(d.horimetro)}</td></tr>
+    <tr><td class="rot">Responsável:</td><td class="val" colspan="3">${esc(d.resp)}</td>
+        <td class="rot">Mecânico:</td><td class="val">${esc(d.mec)}</td>
+        <td class="rot">Status:</td><td class="val">${esc(st)}</td></tr>
+  </table>
+  <table class="f-tab">
+    <tr><th class="c-grupo">Grupo</th><th class="c-item">Item a Verificar</th><th class="c-tipo">Tipo</th>
+        <th class="c-per">Período</th><th class="c-obr">Obrig.</th><th class="c-marca">OK</th>
+        <th class="c-marca">Necessita<br>Reparo</th><th class="c-marca">Não se<br>Aplica</th><th class="c-obs">Observações</th></tr>
+    ${linhas}
+  </table>
+  <table class="f-assin"><tr>
+    <td>Assinatura do Responsável</td><td class="espaco"></td><td>Assinatura do Mecânico</td>
+  </tr></table>
+  ${todasFotos.length ? (function(){
+    var rows=todasFotos.map(function(f){return '<figure><img src="'+f.data+'"><figcaption>'+esc(f.legenda||"")+'</figcaption></figure>';}).join("");
+    return '<div class="f-fotos"><div class="f-fotos-titulo">REGISTRO FOTOGR\u00c1FICO ('+todasFotos.length+' foto'+(todasFotos.length>1?"s":"")+')</div><div class="f-fotos-grid">'+rows+'</div></div>';
+  })() : ""}
+  <div class="f-rodape">SAKUMA Agroneg\u00f3cios \u00b7 Gerado em ${fmtData(hoje())}</div>`;
+}
+
+function renderChecklist(){
+  const r=DB.rascunho;
+  const folha=$("#folha-checklist");
+  if(!r.implemento){
+    folha.innerHTML=`<div style="display:flex;align-items:center;justify-content:center;height:250mm;color:var(--mudo);font-size:12pt;text-align:center;padding:20px">Selecione uma máquina ou implemento acima para montar o checklist automaticamente.</div>`;
+  } else {
+    folha.innerHTML=buildFolha(r.implemento,{interativo:true,dados:{data:r.data,horimetro:r.horimetro,resp:r.resp,mec:r.mec},marcas:r.marcas,fotos:r.fotos||{},fotosGerais:r.fotosGerais||[]});
+  }
+  atualizarChip();
+}
+function contagemMarcas(){
+  const r=DB.rascunho; const ids=new Set(itensDe(r.implemento).map(t=>t.id));
+  let ok=0,rep=0,na=0;
+  Object.entries(r.marcas).forEach(([id,m])=>{ if(!ids.has(id)||!m.m) return; if(m.m==="OK")ok++; else if(m.m==="REP")rep++; else if(m.m==="NA")na++; });
+  return {ok,rep,na,tot:ok+rep+na};
+}
+function atualizarChip(){
+  const c=contagemMarcas(); const chip=$("#chip-situacao");
+  if(!DB.rascunho.implemento||c.tot===0){ chip.className="chip-situacao neutro"; chip.textContent="Situação prevista: —"; return; }
+  if(c.rep>0){ chip.className="chip-situacao rep"; chip.textContent=`Situação prevista: Reprovado (${c.rep} reparo${c.rep>1?"s":""})`; }
+  else { chip.className="chip-situacao ok"; chip.textContent="Situação prevista: Aprovado"; }
+}
+function marcar(itemId,m){
+  const r=DB.rascunho;
+  const atual=r.marcas[itemId]||(r.marcas[itemId]={m:"",obs:""});
+  atual.m = atual.m===m ? "" : m; // clique repetido desmarca; marcação é exclusiva por linha
+  salvar(); renderChecklist();
+}
+function obsItem(itemId,valor){
+  const r=DB.rascunho;
+  (r.marcas[itemId]||(r.marcas[itemId]={m:"",obs:""})).obs=valor;
+  salvar();
+}
+/* ==================== GESTAO DE FOTOS ==================== */
+function lerArquivos(files,cb){
+  var arr=Array.from(files),done=[],i=0;
+  function next(){
+    if(i>=arr.length){cb(done);return;}
+    var f=arr[i++];
+    if(!f.type.startsWith("image/")){toast("Ignorado: "+f.name);next();return;}
+    if(f.size>8*1024*1024){toast("Foto muito grande (máx 8 MB): "+f.name);next();return;}
+    var fr=new FileReader();
+    fr.onload=function(e){done.push({data:e.target.result,nome:f.name,tipo:f.type});next();};
+    fr.readAsDataURL(f);
+  }
+  next();
+}
+function adicionarFotosItem(itemId,input){
+  lerArquivos(input.files,function(res){
+    var r=DB.rascunho;
+    if(!r.fotos)r.fotos={};
+    if(!r.fotos[itemId])r.fotos[itemId]=[];
+    r.fotos[itemId].push.apply(r.fotos[itemId],res);
+    input.value=""; salvar(); renderChecklist();
+  });
+}
+function adicionarFotosGerais(input){
+  lerArquivos(input.files,function(res){
+    var r=DB.rascunho;
+    if(!r.fotosGerais)r.fotosGerais=[];
+    r.fotosGerais.push.apply(r.fotosGerais,res);
+    input.value=""; salvar(); renderChecklist();
+    toast(res.length+" foto(s) geral(is) adicionada(s).");
+  });
+}
+var _fotoCtx={itemId:null,idx:0};
+function abrirFotoModal(itemId,idx){
+  _fotoCtx={itemId:itemId,idx:idx};
+  _aplicarFotoModal();
+  document.getElementById("foto-modal").classList.add("aberto");
+}
+function fecharFotoModal(e){
+  if(e&&e.target!==document.getElementById("foto-modal")) return;
+  document.getElementById("foto-modal").classList.remove("aberto");
+}
+function _fotoArray(){
+  var r=DB.rascunho;
+  if(_fotoCtx.itemId==="__geral__") return r.fotosGerais||[];
+  return (r.fotos&&r.fotos[_fotoCtx.itemId])||[];
+}
+function _aplicarFotoModal(){
+  var arr=_fotoArray(),f=arr[_fotoCtx.idx];
+  if(!f){document.getElementById("foto-modal").classList.remove("aberto");return;}
+  document.getElementById("foto-modal-img").src=f.data;
+  var dl=document.getElementById("foto-modal-dl");
+  dl.href=f.data; dl.download=f.nome||"foto.jpg";
+  document.getElementById("foto-modal-leg").textContent=(f.nome||"")+(arr.length>1?" ("+((_fotoCtx.idx+1)+"/"+arr.length)+")":"");
+}
+function navFoto(dir){
+  var arr=_fotoArray();
+  _fotoCtx.idx=(_fotoCtx.idx+dir+arr.length)%arr.length;
+  _aplicarFotoModal();
+}
+function excluirFotoAtual(){
+  if(!confirm("Excluir esta foto?")) return;
+  var r=DB.rascunho;
+  if(_fotoCtx.itemId==="__geral__"){
+    (r.fotosGerais||[]).splice(_fotoCtx.idx,1);
+  } else if(r.fotos&&r.fotos[_fotoCtx.itemId]){
+    r.fotos[_fotoCtx.itemId].splice(_fotoCtx.idx,1);
+  }
+  salvar(); renderChecklist();
+  var arr=_fotoArray();
+  if(!arr.length){document.getElementById("foto-modal").classList.remove("aberto");return;}
+  _fotoCtx.idx=Math.min(_fotoCtx.idx,arr.length-1);
+  _aplicarFotoModal();
+}
+document.addEventListener("keydown",function(e){
+  var m=document.getElementById("foto-modal");
+  if(!m.classList.contains("aberto")) return;
+  if(e.key==="ArrowLeft") navFoto(-1);
+  else if(e.key==="ArrowRight") navFoto(1);
+  else if(e.key==="Escape") m.classList.remove("aberto");
+});
+/* ========================================================= */
+
+function salvarRascunho(){
+  const r=DB.rascunho;
+  r.data=$("#chk-data").value; r.horimetro=$("#chk-hor").value;
+  r.resp=$("#chk-resp").value; r.mec=$("#chk-mec").value;
+  salvar(); 
+  if(r.implemento){ // reflete cabeçalho na folha sem redesenhar inputs (evita perder foco)
+    const cels=$("#folha-checklist").querySelectorAll(".f-info td.val");
+    if(cels.length>=9){ cels[2].textContent=fmtData(r.data); cels[5].textContent=fmtNum(r.horimetro); cels[6].textContent=r.resp; cels[7].textContent=r.mec; }
+  }
+}
+function mudarImplementoChecklist(){
+  DB.rascunho.implemento=$("#chk-imp").value;
+  DB.rascunho.marcas={};
+  salvar(); renderChecklist();
+}
+function limparMarcacoes(){ DB.rascunho.marcas={}; salvar(); renderChecklist(); toast("Marcações limpas."); }
+
+function salvarInspecao(){
+  const r=DB.rascunho;
+  if(!r.implemento) return toast("Selecione a máquina ou implemento.");
+  if(!r.data) return toast("Informe a data da inspeção.");
+  const c=contagemMarcas();
+  if(c.tot===0 && !confirm("Nenhum item foi marcado. Salvar a inspeção mesmo assim?")) return;
+  const situacao = c.rep>0 ? "Reprovado" : "Aprovado";
+  const obs = c.rep===0
+    ? (c.tot>0 ? "Nenhuma anomalia encontrada." : "")
+    : `${c.ok} item(ns) OK · ${c.rep} necessita(m) reparo · ${c.na} não se aplica.`;
+  const fotosSalvas=Object.assign({},r.fotos||{});
+  const fotosGeraisSalvas=(r.fotosGerais||[]).slice();
+  DB.inspecoes.push({id:uid(),data:r.data,implemento:r.implemento,horimetro:r.horimetro===""?"":Number(r.horimetro),
+    mecanico:r.mec,responsavel:r.resp,usuario:USUARIO?USUARIO.nome:"",situacao,obs,
+    fotos:fotosSalvas,fotosGerais:fotosGeraisSalvas});
+  // Automação: cada "Necessita Reparo" vira uma anomalia aberta na Aba 5
+  let geradas=0;
+  itensDe(r.implemento).forEach(t=>{
+    const m=r.marcas[t.id];
+    if(m&&m.m==="REP"){
+      DB.anomalias.push({id:uid(),data:r.data,implemento:r.implemento,item:t.item,
+        descricao:m.obs||`Item marcado como "Necessita Reparo" no checklist de ${fmtData(r.data)}.`,
+        prioridade:"Média",servico:"",pecas:"",responsavel:r.resp,usuario:USUARIO?USUARIO.nome:"",
+        status:"Aberta",conclusao:""});
+      geradas++;
+    }
+  });
+  r.marcas={}; r.fotos={}; r.fotosGerais=[];
+  salvar(); renderTudo();
+  toast(`Inspeção nº ${DB.inspecoes.length} registrada (${situacao})${geradas?` · ${geradas} anomalia(s) criada(s) na Aba 5`:""}.`);
+}
+
+/* ===================== Impressão A4 ===================== */
+let _limparImpressao=null;
+function dispararImpressao(paginas){
+  const raiz=$("#raiz-impressao");
+  if(_limparImpressao) window.removeEventListener("afterprint",_limparImpressao);
+  raiz.innerHTML=paginas.map(p=>`<div class="folha">${p}</div>`).join("");
+  _limparImpressao=()=>{ raiz.innerHTML=""; window.removeEventListener("afterprint",_limparImpressao); _limparImpressao=null; };
+  window.addEventListener("afterprint",_limparImpressao);
+  window.print();
+}
+function imprimirChecklist(emBranco){
+  const r=DB.rascunho;
+  if(!r.implemento) return toast("Selecione um implemento para imprimir.");
+  const opts = emBranco
+    ? {dados:{data:"",horimetro:"",resp:"",mec:""},marcas:{}}
+    : {dados:{data:r.data,horimetro:r.horimetro,resp:r.resp,mec:r.mec},marcas:r.marcas};
+  const optsComFoto=Object.assign({fotos:r.fotos||{},fotosGerais:r.fotosGerais||[]},opts);
+  dispararImpressao([buildFolha(r.implemento,optsComFoto)]);
+}
+function imprimirLote(){
+  const ativos=DB.implementos.filter(i=>i.status==="Ativo");
+  if(!ativos.length) return toast("Nenhum implemento ativo para imprimir.");
+  toast(`Gerando ${ativos.length} checklist(s) em branco — um por página A4…`);
+  dispararImpressao(ativos.map(i=>buildFolha(i.nome,{dados:{data:"",horimetro:"",resp:"",mec:""},marcas:{}})));
+}
+
+/* ===================== ABA 4 — Inspeções ===================== */
+function camposInsp(){
+  return [
+    {n:"data",label:"Data",tipo:"date",req:1},
+    {n:"implemento",label:"Equipamento",tipo:"select",ops:DB.implementos.map(i=>i.nome),req:1},
+    {n:"horimetro",label:"Horímetro",tipo:"number"},
+    {n:"situacao",label:"Situação",tipo:"select",ops:LISTAS.situacoes},
+    {n:"mecanico",label:"Mecânico"},{n:"responsavel",label:"Responsável"},
+    {n:"obs",label:"Observações Gerais",tipo:"textarea",largo:1}
+  ];
+}
+function novaInspecao(){
+  if(!DB.implementos.length) return toast("Cadastre uma máquina ou implemento primeiro (Aba 1).");
+  abrirModal("Nova inspeção",camposInsp(),{data:hoje(),situacao:"Aprovado",responsavel:USUARIO?USUARIO.nome:""},v=>{
+    v.horimetro=v.horimetro===""?"":Number(v.horimetro);
+    DB.inspecoes.push({id:uid(),usuario:USUARIO?USUARIO.nome:"",...v});
+    salvar(); renderTudo(); fecharModal(); toast("Inspeção registrada.");
+  });
+}
+function editarInspecao(id){
+  const r=DB.inspecoes.find(x=>x.id===id); if(!r) return;
+  abrirModal("Editar inspeção",camposInsp(),r,v=>{
+    v.horimetro=v.horimetro===""?"":Number(v.horimetro);
+    Object.assign(r,v);
+    salvar(); renderTudo(); fecharModal(); toast("Inspeção atualizada.");
+  });
+}
+function excluirInspecao(id){
+  if(!confirm("Excluir este registro de inspeção?")) return;
+  DB.inspecoes=DB.inspecoes.filter(x=>x.id!==id);
+  salvar(); renderTudo(); toast("Registro excluído.");
+}
+function renderInspecoes(){
+  const tb=$("#tab-inspecoes tbody");
+  tb.innerHTML = DB.inspecoes.length ? DB.inspecoes.map((r,ix)=>`<tr>
+    <td style="text-align:center"><b>${ix+1}</b></td><td>${fmtData(r.data)}</td><td>${esc(r.implemento)}</td>
+    <td>${fmtNum(r.horimetro)}</td><td>${esc(r.mecanico)}</td><td>${esc(r.responsavel)}</td>
+    <td>${esc(r.usuario||"—")}</td>
+    <td><span class="selo ${r.situacao==="Aprovado"?"aprovado":"reprovado"}">${esc(r.situacao)}</span></td>
+    <td>${esc(r.obs)}</td>
+    <td class="acoes"><button class="btn mini cinza" onclick="editarInspecao('${r.id}')">Editar</button>
+    <button class="btn mini perigo" onclick="excluirInspecao('${r.id}')">Excluir</button></td>
+  </tr>`).join("") : `<tr><td colspan="10" class="vazio">Nenhuma inspeção registrada. Use “✓ Salvar inspeção” na Aba 3 ou adicione manualmente.</td></tr>`;
+}
+
+/* ===================== ABA 5 — Anomalias ===================== */
+function camposAnom(){
+  return [
+    {n:"data",label:"Data",tipo:"date",req:1},
+    {n:"implemento",label:"Implemento",tipo:"select",ops:DB.implementos.map(i=>i.nome),req:1},
+    {n:"item",label:"Item com Defeito",largo:1,req:1},
+    {n:"descricao",label:"Descrição da Anomalia",tipo:"textarea",largo:1},
+    {n:"prioridade",label:"Prioridade",tipo:"select",ops:LISTAS.prioridades},
+    {n:"status",label:"Status",tipo:"select",ops:LISTAS.statusAnom},
+    {n:"servico",label:"Serviço Necessário"},{n:"pecas",label:"Peças Necessárias"},
+    {n:"responsavel",label:"Responsável"},{n:"conclusao",label:"Data Conclusão",tipo:"date"}
+  ];
+}
+const seloPri={"Baixa":"p-baixa","Média":"p-media","Alta":"p-alta","Crítica":"p-critica"};
+const seloSt={"Aberta":"s-aberta","Em andamento":"s-andamento","Concluída":"s-concluida"};
+function novaAnomalia(){
+  if(!DB.implementos.length) return toast("Cadastre um implemento primeiro (Aba 1).");
+  abrirModal("Nova anomalia",camposAnom(),{data:hoje(),prioridade:"Média",status:"Aberta",responsavel:USUARIO?USUARIO.nome:""},v=>{
+    DB.anomalias.push({id:uid(),...v});
+    salvar(); renderTudo(); fecharModal(); toast("Anomalia registrada.");
+  });
+}
+function editarAnomalia(id){
+  const r=DB.anomalias.find(x=>x.id===id); if(!r) return;
+  abrirModal("Editar anomalia",camposAnom(),r,v=>{
+    if(v.status==="Concluída"&&!v.conclusao) v.conclusao=hoje();
+    Object.assign(r,v);
+    salvar(); renderTudo(); fecharModal(); toast("Anomalia atualizada.");
+  });
+}
+function excluirAnomalia(id){
+  if(!confirm("Excluir este registro de anomalia?")) return;
+  DB.anomalias=DB.anomalias.filter(x=>x.id!==id);
+  salvar(); renderTudo(); toast("Registro excluído.");
+}
+function avancarStatus(id){
+  const r=DB.anomalias.find(x=>x.id===id); if(!r) return;
+  if(r.status==="Aberta") r.status="Em andamento";
+  else if(r.status==="Em andamento"){ r.status="Concluída"; if(!r.conclusao) r.conclusao=hoje(); }
+  else return toast("Esta anomalia já está concluída.");
+  salvar(); renderTudo(); toast(`Status: ${r.status}.`);
+}
+function renderAnomalias(){
+  const fImp=$("#filtro-anom-imp").value, fSt=$("#filtro-anom-status").value;
+  const lista=DB.anomalias.filter(r=>(!fImp||r.implemento===fImp)&&(!fSt||r.status===fSt));
+  $("#tab-anomalias tbody").innerHTML = lista.length ? lista.map(r=>`<tr>
+    <td>${fmtData(r.data)}</td><td>${esc(r.implemento)}</td><td>${esc(r.item)}</td><td>${esc(r.descricao)}</td>
+    <td><span class="selo ${seloPri[r.prioridade]||"p-media"}">${esc(r.prioridade)}</span></td>
+    <td>${esc(r.servico)}</td><td>${esc(r.pecas)}</td><td>${esc(r.responsavel)}</td>
+    <td><span class="selo ${seloSt[r.status]||"s-aberta"}">${esc(r.status)}</span></td>
+    <td>${fmtData(r.conclusao)}</td>
+    <td class="acoes">${r.status!=="Concluída"?`<button class="btn mini claro" onclick="avancarStatus('${r.id}')">Avançar ➜</button>`:""}
+    <button class="btn mini cinza" onclick="editarAnomalia('${r.id}')">Editar</button>
+    <button class="btn mini perigo" onclick="excluirAnomalia('${r.id}')">Excluir</button></td>
+  </tr>`).join("") : `<tr><td colspan="11" class="vazio">Nenhuma anomalia ${fImp||fSt?"para os filtros selecionados":"registrada"}.</td></tr>`;
+}
+
+/* ===================== ABA 6 — Dashboard ===================== */
+function renderDashboard(){
+  const insp=DB.inspecoes, anom=DB.anomalias;
+  $("#kpi-checklists").textContent=insp.length;
+  $("#kpi-abertas").textContent=anom.filter(a=>a.status!=="Concluída").length;
+  $("#kpi-criticas").textContent=anom.filter(a=>a.prioridade==="Crítica"&&a.status!=="Concluída").length;
+  const aprov=insp.filter(r=>r.situacao==="Aprovado").length;
+  $("#kpi-aprovacao").textContent=insp.length?Math.round(aprov/insp.length*100)+"%":"0%";
+  $("#kpi-ativos").textContent=DB.implementos.filter(i=>i.status==="Ativo").length;
+
+  // Anomalias por equipamento (todos os implementos cadastrados, como na planilha)
+  const porImp=DB.implementos.map(i=>{
+    const doImp=anom.filter(a=>a.implemento===i.nome);
+    return {nome:i.nome,total:doImp.length,abertas:doImp.filter(a=>a.status!=="Concluída").length,concl:doImp.filter(a=>a.status==="Concluída").length};
+  });
+  $("#tab-dash-anom tbody").innerHTML = porImp.length ? porImp.map(x=>`<tr>
+    <td>${esc(x.nome)}</td><td style="text-align:center"><b>${x.total}</b></td>
+    <td style="text-align:center">${x.abertas}</td><td style="text-align:center">${x.concl}</td></tr>`).join("")
+    : `<tr><td colspan="4" class="vazio">Nenhum equipamento cadastrado.</td></tr>`;
+
+  // Top 5
+  const rank=[...porImp].sort((a,b)=>b.total-a.total).slice(0,5);
+  const max=Math.max(1,...rank.map(x=>x.total));
+  $("#dash-top5").innerHTML = rank.some(x=>x.total>0) ? rank.map((x,ix)=>`
+    <div style="display:grid;grid-template-columns:22px 1fr 34px;gap:8px;align-items:center;margin-bottom:8px">
+      <b style="color:var(--ardosia)">${ix+1}º</b>
+      <div><div style="font-size:12.5px;margin-bottom:2px">${esc(x.nome)}</div>
+        <div class="mini-barra"><i style="width:${Math.round(x.total/max*100)}%"></i></div></div>
+      <b style="text-align:right;color:var(--verde2)">${x.total}</b>
+    </div>`).join("") : `<div class="vazio">Nenhuma anomalia registrada.</div>`;
+
+  // Situação das inspeções
+  const reprov=insp.length-aprov, maxS=Math.max(1,aprov,reprov);
+  $("#dash-situacao").innerHTML=`
+    <div style="display:grid;grid-template-columns:90px 1fr 30px;gap:8px;align-items:center;margin-bottom:8px">
+      <span class="selo aprovado">Aprovado</span>
+      <div class="mini-barra"><i style="width:${Math.round(aprov/maxS*100)}%"></i></div><b style="text-align:right">${aprov}</b></div>
+    <div style="display:grid;grid-template-columns:90px 1fr 30px;gap:8px;align-items:center">
+      <span class="selo reprovado">Reprovado</span>
+      <div class="mini-barra"><i style="width:${Math.round(reprov/maxS*100)}%;background:var(--vermelho)"></i></div><b style="text-align:right">${reprov}</b></div>`;
+}
+
+/* ===================== Exportar / Importar / Restaurar ===================== */
+function exportarJSON(){
+  const blob=new Blob([JSON.stringify(DB,null,2)],{type:"application/json"});
+  const a=document.createElement("a");
+  a.href=URL.createObjectURL(blob);
+  a.download=`manutencao_implementos_backup_${hoje()}.json`;
+  a.click(); URL.revokeObjectURL(a.href);
+  toast("Backup exportado (.json).");
+}
+function importarJSON(input){
+  const arq=input.files[0]; if(!arq) return;
+  const leitor=new FileReader();
+  leitor.onload=()=>{
+    try{
+      const d=JSON.parse(leitor.result);
+      if(!d||!Array.isArray(d.implementos)||!Array.isArray(d.itens)) throw new Error("estrutura");
+      d.rascunho=d.rascunho||{implemento:"",data:hoje(),horimetro:"",resp:"",mec:"",marcas:{}};
+      ["implementos","itens","inspecoes","anomalias"].forEach(k=>{ d[k]=d[k]||[]; d[k].forEach(r=>{ if(!r.id) r.id=uid(); }); });
+      DB=d; salvar(); renderTudo(); toast("Dados importados com sucesso.");
+    }catch(e){ toast("Arquivo inválido — selecione um backup gerado por este sistema."); }
+  };
+  leitor.readAsText(arq); input.value="";
+}
+function restaurarExemplo(){
+  if(!confirm("Substituir TODOS os dados atuais pelos dados originais da planilha?")) return;
+  DB=seedNovo(); salvar(); renderTudo(); toast("Dados originais restaurados.");
+}
+
+/* ===================== Render geral e inicialização ===================== */
+function preencherSelect(sel,opcoes,vazio,manter){
+  const atual=manter?sel.value:null;
+  sel.innerHTML=(vazio?`<option value="">${vazio}</option>`:"")+opcoes.map(o=>`<option value="${esc(o)}">${esc(o)}</option>`).join("");
+  if(atual&&opcoes.includes(atual)) sel.value=atual;
+}
+function renderTudo(){
+  const nomes=DB.implementos.map(i=>i.nome);
+  preencherSelect($("#chk-imp"),nomes,"— selecione a máquina ou implemento —");
+  $("#chk-imp").value=DB.rascunho.implemento||"";
+  preencherSelect($("#filtro-itens"),nomes,"Todos os equipamentos",true);
+  preencherSelect($("#filtro-anom-imp"),nomes,"Equipamento: todos",true);
+  $("#chk-data").value=DB.rascunho.data||"";
+  $("#chk-hor").value=DB.rascunho.horimetro||"";
+  $("#chk-resp").value=DB.rascunho.resp||"";
+  $("#chk-mec").value=DB.rascunho.mec||"";
+  renderImplementos(); renderItens(); renderChecklist(); renderInspecoes(); renderAnomalias(); renderDashboard();
+}
+DB=carregar();
+if(!DB.rascunho) DB.rascunho={implemento:"",data:hoje(),horimetro:"",resp:"",mec:"",marcas:{},fotos:{},fotosGerais:[]};
+renderTudo();
+armazem.gravar(JSON.stringify(DB));
+if(!armazem.persistente) toast("Aviso: neste ambiente os dados não ficam salvos ao fechar. Use “Exportar dados” para backup.");
+/* Iniciar Firebase — credenciais embutidas como fallback */
+const CFG_BUILTIN = {
+  apiKey: "AIzaSyD9NsnDpiuDZMyEgzbmtXhItBFU1Tv6KR4",
+  authDomain: "sakuma-manutencao.firebaseapp.com",
+  projectId: "sakuma-manutencao",
+  storageBucket: "sakuma-manutencao.firebasestorage.app",
+  messagingSenderId: "699247076190",
+  appId: "1:699247076190:web:0349c2908f175c4713e5cf"
+};
+setTimeout(()=>{
+  const cfgSalva = lerCfgFirebase();
+  const cfg = (cfgSalva && cfgSalva.apiKey) ? cfgSalva : CFG_BUILTIN;
+  if(window.firebase){
+    iniciarFirebase(cfg);
+  } else {
+    setSyncBar("pendente","Firebase SDK não carregou — sem internet? Dados salvos localmente.");
+  }
+},600);
+
+/* Monta os botões de usuário e restaura a sessão (depois que o DB já existe) */
+montarUsuarios();
+document.getElementById("usuario").focus();
+try{
+  const idSessao=sessionStorage.getItem(CHAVE_SESSAO);
+  if(idSessao && USUARIOS.some(u=>u.id===idSessao)){ selecionarUsuario(idSessao); abrirSessao(idSessao); }
+}catch(e){}
+
+/* Registro do Service Worker — habilita uso offline quando hospedado em HTTPS.
+   Ao abrir o arquivo direto do disco (file://) esta etapa é ignorada sem erro. */
+if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
+  window.addEventListener("load",()=>{ navigator.serviceWorker.register("sw.js").catch(()=>{}); });
+}
+</script>
+</body>
+</html>
