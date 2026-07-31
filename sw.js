@@ -2,7 +2,7 @@
    Guarda o aplicativo no aparelho para funcionar sem internet.
    Ao publicar uma versão nova do index.html, troque o número do CACHE
    (v1 -> v2) para que os aparelhos baixem a atualização. */
-const CACHE = "sakuma-checklist-v1";
+const CACHE = "sakuma-checklist-v3";
 const ARQUIVOS = [
   "./", "./index.html", "./manifest.json",
   "./icone-192.png", "./icone-512.png", "./icone-maskable-512.png", "./apple-touch-icon.png"
